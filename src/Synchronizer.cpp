@@ -234,9 +234,9 @@ Synchronizer::StatePSS Synchronizer::syncPSS3()
     logPSS(_sync.mag, _sync.coarse);
 
     n_id_2 = lte_pss_detect(_rx, bufs, _chans);
-    if (n_id_2 == _rx->sync.n_id_2) {
-        if ((_sync.coarse > min) && (_sync.coarse < max))
-            state = StatePSS::Found;
+    if ((_sync.coarse > min) && (_sync.coarse < max)) {
+        if (n_id_2 == _rx->sync.n_id_2) state = StatePSS::Found;
+        else _pssMisses += 10;
     }
 
     if (state == StatePSS::NotFound) {

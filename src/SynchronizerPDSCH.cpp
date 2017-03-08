@@ -76,6 +76,8 @@ int SynchronizerPDSCH::drive(int adjust)
                 _pssMisses = 0;
             } else if (++_pssMisses > 10) {
                 resetState();
+            } else {
+                changeState(LTE_STATE_PBCH_SYNC);
             }
         }
         break;
