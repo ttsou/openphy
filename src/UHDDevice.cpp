@@ -230,12 +230,13 @@ int UHDDevice<T>::reload()
             if (ts < last)
                 throw runtime_error("Non-monotonic timestamps detected");
 
-            if ((size_t) (ts - last) != _spp) {
+            if ((size_t) (ts - last) == _spp - 1) {
                 ostringstream ost;
-                ost << "DEV   : " << "UHD timestamp jump - "
+                ost << "DEV   : " << "Correcting UHD timestamp slip - "
                                   << "Expected " << _spp << " samples, "
                                   << "but read " << ts - last;
                 LOG_ERR(ost.str().c_str());
+                ts++;
             }
 
             auto b = begin(_rx_bufs);
@@ -308,7 +309,8 @@ bool UHDDevice<T>::initRates(int rbs)
     try {
         if (_type != DEV_TYPE_X300) {
              double mcr = rate;
-             while (mcr < 5e6) mcr *= 2.0;
+             if (mcr < 5e6)
+                 while (mcr < 30.72e6 / _chans) mcr *= 2.0;
              _dev->set_master_clock_rate(mcr);
         }
         _dev->set_rx_rate(rate);
