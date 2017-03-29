@@ -89,7 +89,8 @@
 #define FW_SHUFFLE_MASK1 15, 14, 11, 10, 7, 6, 3, 2, 15, 14, 11, 10, 7, 6, 3, 2
 
 static inline int16_t gen_fw_metrics(int16_t *bm, int8_t x, int8_t z,
-		       int16_t *sums_p, int16_t *sums_c, int16_t le)
+				     const int16_t *sums_p, int16_t *sums_c,
+				     int16_t le)
 {
 	__m128i m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12, m13;
 
@@ -155,8 +156,9 @@ static inline int16_t gen_fw_metrics(int16_t *bm, int8_t x, int8_t z,
 #define LV_BW_SHUFFLE_MASK0 7, 6, 15, 14, 13, 12, 5, 4, 3, 2, 11, 10, 9, 8, 1, 0
 #define LV_BW_SHUFFLE_MASK1 15, 14, 7, 6, 5, 4, 13, 12, 11, 10, 3, 2, 1, 0, 9, 8
 
-static inline int16_t gen_bw_metrics(int16_t *bm, const int8_t z,
-		       int16_t *fw, int16_t *bw, int16_t norm)
+static inline int16_t gen_bw_metrics(const int16_t *bm, const int8_t z,
+				     const int16_t *fw, int16_t *bw,
+				     int16_t norm)
 {
 	__m128i m0, m1, m3, m4, m5, m6, m9, m10, m11, m12, m13, m14, m15;
 
@@ -212,13 +214,15 @@ static inline int16_t gen_bw_metrics(int16_t *bm, const int8_t z,
 }
 #else
 static inline int16_t gen_fw_metrics(int16_t *bm, int8_t x, int8_t z,
-		       int16_t *sums_p, int16_t *sums_c, int16_t le)
+				     const int16_t *sums_p, int16_t *sums_c,
+				     int16_t le)
 {
 	return 0;
 }
 
-static inline int16_t gen_bw_metrics(int16_t *bm, const int8_t z,
-		       int16_t *fw, int16_t *bw, int16_t norm)
+static inline int16_t gen_bw_metrics(const int16_t *bm, const int8_t z,
+				     const int16_t *fw, int16_t *bw,
+				     int16_t norm)
 {
 	return 0;
 }
