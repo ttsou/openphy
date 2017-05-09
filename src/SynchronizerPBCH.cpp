@@ -32,7 +32,7 @@ extern "C" {
 /*
  * PBCH drive sequence
  */
-bool SynchronizerPBCH::drive(int adjust)
+void SynchronizerPBCH::drive(int adjust)
 {
     struct lte_time *ltime = &_rx->time;
     struct lte_mib mib;
@@ -67,7 +67,6 @@ bool SynchronizerPBCH::drive(int adjust)
     }
 
     _converter.update();
-    return mibValid;
 }
 
 /*

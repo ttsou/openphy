@@ -14,7 +14,7 @@ public:
     int numRB() const { return _mibDecodeRB; }
 
 private:
-    bool drive(int adjust);
+    void drive(int adjust);
 
     bool _mibValid;
     int _mibDecodeRB;

@@ -17,7 +17,7 @@ public:
     void start();
 
 private:
-    int drive(int adjust);
+    void drive(int adjust);
     void handleFreqOffset(double offset);
 
     shared_ptr<BufferQueue> _inboundQueue;

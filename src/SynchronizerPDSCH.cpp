@@ -49,7 +49,7 @@ void SynchronizerPDSCH::handleFreqOffset(double offset)
 /*
  * PDSCH drive sequence
  */
-int SynchronizerPDSCH::drive(int adjust)
+void SynchronizerPDSCH::drive(int adjust)
 {
     struct lte_time *time = &_rx->time;
     static struct lte_mib mib;
@@ -118,8 +118,6 @@ int SynchronizerPDSCH::drive(int adjust)
     }
 
     _converter.update();
-
-    return 0;
 }
 
 /*
@@ -138,12 +136,9 @@ void SynchronizerPDSCH::start()
         _rx->sync.coarse = 0;
         _rx->sync.fine = 0;
 
-        if (drive(shift) < 0) {
-            fprintf(stderr, "Drive: Fatal error\n");
-            break;
-        }
-
+        drive(shift);
         _converter.reset();
+
         if (_reset) resetState();
         if (_stop) break;
     }
