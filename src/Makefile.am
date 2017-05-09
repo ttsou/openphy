@@ -26,15 +26,11 @@ libopenphy_la_SOURCES = \
 	DecoderASN1.cpp \
 	LteBuffer.cpp
 
-bin_PROGRAMS = ltedecode ltescan 
+bin_PROGRAMS = ltedecode
 
 ltedecode_SOURCES = ltedecode.cpp
 ltedecode_LDADD = libopenphy.la $(LTE_LA) $(TURBO_LA) $(DSP_LA) $(FFTWF_LIBS) $(UHD_LIBS)
 ltedecode_LDFLAGS = -pthread
-
-ltescan_SOURCES = ltescan.cpp
-ltescan_LDADD = libopenphy.la $(LTE_LA) $(TURBO_LA) $(DSP_LA) $(FFTWF_LIBS) $(UHD_LIBS)
-ltescan_LDFLAGS = -pthread
 
 noinst_HEADERS = \
 	BufferQueue.h \
