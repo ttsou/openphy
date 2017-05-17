@@ -34,15 +34,16 @@ ltedecode_LDFLAGS = -pthread
 
 noinst_HEADERS = \
 	BufferQueue.h \
-	DecoderPDSCH.h \
-	IOInterface.h \
-	Resampler.h \
-	Synchronizer.h \
-	SynchronizerPDSCH.h \
-	UHDDevice.h \
 	Converter.h \
+	DecoderASN1.h \
+	DecoderPDSCH.h \
 	FreqAverager.h \
+	IOInterface.h \
 	LteBuffer.h \
+	Resampler.h \
 	SignalVector.h \
+	Synchronizer.h \
 	SynchronizerPBCH.h \
-	TimestampBuffer.h
+	SynchronizerPDSCH.h \
+	TimestampBuffer.h \
+	UHDDevice.h
