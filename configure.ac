@@ -35,7 +35,6 @@ AS_IF([test "x$with_neon_vfpv4" = "xyes"], [
 
 AC_CHECK_LIB([m],[sincos])
 PKG_CHECK_MODULES(FFTWF, fftw3f)
-PKG_CHECK_MODULES(WIRESHARK, wireshark >= 0.0)
 
 PKG_CHECK_MODULES(UHD, uhd >= 003.009.000)
 

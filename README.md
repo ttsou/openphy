@@ -52,10 +52,6 @@ USRP Hardware Driver for Ettus radio device support
 
   http://uhd.ettus.com
 
-Wireshark for LTE MAC/RRC dissection
-
-  http://www.wireshark.org
-
 Reference Clock
 ===============
 
