@@ -29,6 +29,7 @@
 #include "log.h"
 
 #define SI_RNTI		0xffff
+#define P_RNTI		0xfffe
 
 static int compare(const void *a, const void *b)
 {
@@ -403,7 +404,7 @@ static int lte_decode_riv_1a(const struct lte_dci *dci, struct lte_riv *riv)
 	dst = lte_dci_get_val(dci, LTE_DCI_FORMAT1A_LOCAL_VRB);
 
 	if (dst) {
-		if ((dci->rbs < 50) || (dci->rnti == SI_RNTI)) {
+		if (dci->rbs < 50 || dci->rnti == SI_RNTI || dci->rnti == P_RNTI) {
 			gap = lte_dci_get_val(dci, LTE_DCI_FORMAT1A_NDI);
 		} else {
 			gap = lte_dci_get_val(dci, LTE_DCI_FORMAT1A_DIST_GAP);

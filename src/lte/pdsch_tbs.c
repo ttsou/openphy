@@ -24,7 +24,8 @@
 #include "dci.h"
 #include "crc.h"
 
-#define LTE_SI_RNTI	0xffff
+#define SI_RNTI		0xffff
+#define P_RNTI		0xfffe
 
 struct mod_entry {
         int I_mcs;
@@ -563,7 +564,7 @@ static int tbs_get_mod_order(struct lte_dci *dci, int hom)
 {
 	int mod;
 
-	if (dci->rnti == LTE_SI_RNTI)
+	if (dci->rnti == P_RNTI || dci->rnti == P_RNTI)
 		return 2;
 
 	/* RA-RNTI hack */
@@ -631,8 +632,7 @@ int lte_tbs_get(struct lte_dci *dci, int n_prb, unsigned rnti)
 {
 	int I_mcs;
 
-	/* RA-RNTI hack */
-	if ((rnti == LTE_SI_RNTI) || (rnti <= 10))
+	if (rnti == SI_RNTI || rnti == P_RNTI || rnti <= 10)
 		return tbs_get_si(dci, n_prb, rnti);
 
 	I_mcs = lte_dci_get_mod(dci);

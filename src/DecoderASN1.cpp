@@ -92,7 +92,17 @@ bool DecoderASN1::send(const char *data, int len, uint16_t rnti)
     copy_n(begin(id), MAC_LTE_START_STRING_LEN, hdr.start);
     hdr.radio_type = FDD_RADIO;
     hdr.dir = DIRECTION_DOWNLINK;
-    hdr.rnti_type = rnti == 0xffff ? SI_RNTI : RA_RNTI;
+    switch (rnti) {
+    case 0xffff:
+        hdr.rnti_type = SI_RNTI;
+        break;
+    case 0xfffe:
+        hdr.rnti_type = P_RNTI;
+        break;
+    default:
+        if (rnti <= 10) hdr.rnti_type = RA_RNTI;
+        else hdr.rnti_type = C_RNTI;
+    }
     hdr.rnti_tag = MAC_LTE_RNTI_TAG;
     hdr.rnti = htons(rnti);
     hdr.payload_tag = MAC_LTE_PAYLOAD_TAG;
