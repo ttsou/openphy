@@ -18,6 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <map>
 #include <iostream>
 #include <iomanip>
 #include <stdint.h>
@@ -30,38 +31,7 @@ extern "C" {
 
 #define RX_BUFLEN        (1 << 22)
 
-#define DEV_ARGS_X300       "master_clock_rate=184.32e6"
-#define DEV_ARGS_DEFAULT    ""
-
 using namespace std;
-
-static int get_dev_type(const uhd::device_addr_t &addr)
-{
-    size_t b200_str, b210_str, x300_str, x310_str;
-
-    b200_str = addr.to_string().find("B200");
-    b210_str = addr.to_string().find("B210");
-    x300_str = addr.to_string().find("X300");
-    x310_str = addr.to_string().find("X310");
-
-    if (b200_str != string::npos) return DEV_TYPE_B200;
-    else if (b210_str != string::npos) return DEV_TYPE_B210;
-    else if (x300_str != string::npos) return DEV_TYPE_X300;
-    else if (x310_str != string::npos) return DEV_TYPE_X300;
-    else return DEV_TYPE_UNKNOWN;
-}
-
-static string get_dev_args(int type)
-{
-    switch (type) {
-    case DEV_TYPE_X300:
-        return DEV_ARGS_X300;
-    case DEV_TYPE_B200:
-    case DEV_TYPE_B210:
-    default:
-        return DEV_ARGS_DEFAULT;
-    }
-}
 
 template <typename T>
 void UHDDevice<T>::init(int64_t &ts, size_t rbs,
@@ -76,12 +46,33 @@ void UHDDevice<T>::init(int64_t &ts, size_t rbs,
     ost << "DEV   : " << "Opening device " << addrs.front().to_string();
     LOG_DEV(ost.str().c_str());
 
-    _type = get_dev_type(addrs.front());
-    if (_type == DEV_TYPE_UNKNOWN) {
+    auto parseDeviceType = [](const auto addr)->DeviceType {
+        size_t b200, b210, x300, x310;
+
+        b200 = addr.to_string().find("B200");
+        b210 = addr.to_string().find("B210");
+        x300 = addr.to_string().find("X300");
+        x310 = addr.to_string().find("X310");
+
+        if (b200 != string::npos)      return DEV_B200;
+        else if (b210 != string::npos) return DEV_B210;
+        else if (x300 != string::npos) return DEV_X300;
+        else if (x310 != string::npos) return DEV_X300;
+        else                           return DEV_UNKNOWN;
+    };
+
+    _type = parseDeviceType(addrs.front());
+    if (_type == DEV_UNKNOWN) {
         LOG_DEV_ERR("Unknown or unsupported device");
     }
 
-    addr = uhd::device_addr_t(args + get_dev_args(_type));
+    map<DeviceType, string> argsMap {
+        { DEV_B200, "" },
+        { DEV_B210, "" },
+        { DEV_X300, "master_clock_rate=184.32e6" },
+    };
+
+    addr = uhd::device_addr_t(args + argsMap[_type]);
     try {
         _dev = uhd::usrp::multi_usrp::make(addr);
     } catch (const exception &ex) {
@@ -95,7 +86,7 @@ void UHDDevice<T>::init(int64_t &ts, size_t rbs,
     case REF_EXTERNAL:
         _dev->set_clock_source("external");
         break;
-    case REF_GPSDO:
+    case REF_GPS:
         _dev->set_clock_source("gpsdo");
         break;
     case REF_INTERNAL:
@@ -307,7 +298,7 @@ bool UHDDevice<T>::initRates(int rbs)
     ost << "DEV   : " << "Setting rate to " << rate/1e6 << " MHz";
     LOG_DEV(ost.str().c_str());
     try {
-        if (_type != DEV_TYPE_X300) {
+        if (_type != DEV_X300) {
              double mcr = rate;
              if (mcr < 5e6)
                  while (mcr < 30.72e6 / _chans) mcr *= 2.0;
@@ -413,7 +404,7 @@ void UHDDevice<T>::reset()
 
 template <typename T>
 UHDDevice<T>::UHDDevice(size_t chans)
-  : _type(DEV_TYPE_UNKNOWN), _chans(chans)
+  : _type(DEV_UNKNOWN), _chans(chans)
 {
 }
 

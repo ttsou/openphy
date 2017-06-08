@@ -31,6 +31,7 @@
 #include "DecoderPDSCH.h"
 #include "DecoderASN1.h"
 #include "FreqAverager.h"
+#include "UHDDevice.h"
 
 extern "C" {
 #include "lte/log.h"
@@ -51,7 +52,7 @@ struct lte_config {
     int rbs;
     int threads;
     uint16_t rnti;
-    enum dev_ref_type ref;
+    UHDDevice<>::ReferenceType ref;
 };
 
 static void print_help()
@@ -74,13 +75,13 @@ static void print_config(struct lte_config *config)
     std::string refstr;
 
     switch (config->ref) {
-    case REF_INTERNAL:
+    case UHDDevice<>::REF_INTERNAL:
         refstr = "Internal";
         break;
-    case REF_EXTERNAL:
+    case UHDDevice<>::REF_EXTERNAL:
         refstr = "External";
         break;
-    case REF_GPSDO:
+    case UHDDevice<>::REF_GPS:
         refstr = "GPSDO";
         break;
     default:
@@ -133,7 +134,7 @@ static int handle_options(int argc, char **argv, struct lte_config *config)
     config->rbs = 6;
     config->threads = 1;
     config->rnti = 0xffff;
-    config->ref = REF_INTERNAL;
+    config->ref = UHDDevice<>::REF_INTERNAL;
 
     while ((option = getopt(argc, argv, "ha:c:f:g:j:b:r:xp")) != -1) {
         switch (option) {
@@ -166,10 +167,10 @@ static int handle_options(int argc, char **argv, struct lte_config *config)
             config->rnti = atoi(optarg);
             break;
         case 'x':
-            config->ref = REF_EXTERNAL;
+            config->ref = UHDDevice<>::REF_EXTERNAL;
             break;
         case 'p':
-            config->ref = REF_GPSDO;
+            config->ref = UHDDevice<>::REF_GPS;
             break;
         default:
             print_help();

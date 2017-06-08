@@ -8,22 +8,9 @@
 
 #include "TimestampBuffer.h"
 
-enum dev_ref_type {
-    REF_INTERNAL,
-    REF_EXTERNAL,
-    REF_GPSDO,
-};
-
-enum {
-    DEV_TYPE_B200,
-    DEV_TYPE_B210,
-    DEV_TYPE_X300,
-    DEV_TYPE_UNKNOWN,
-};
-
 using namespace std;
 
-template <typename T>
+template <typename T = complex<short>>
 class UHDDevice {
     typedef TimestampBuffer<T> TSBuffer;
 
@@ -50,11 +37,24 @@ public:
     int reload();
     int pull(vector<vector<T>> &bufs, size_t len, int64_t ts);
 
+    enum ReferenceType {
+        REF_INTERNAL,
+        REF_EXTERNAL,
+        REF_GPS,
+    };
+
+    enum DeviceType {
+        DEV_B200,
+        DEV_B210,
+        DEV_X300,
+        DEV_UNKNOWN,
+    };
+
 private:
     bool initRates(int rbs);
     void initRx(int64_t &ts);
 
-    int _type;
+    DeviceType _type;
     size_t _chans;
     size_t _spp;
     double _rate;
