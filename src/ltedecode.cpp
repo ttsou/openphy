@@ -51,6 +51,7 @@ struct lte_config {
     int chans;
     int rbs;
     int threads;
+    uint16_t port;
     uint16_t rnti;
     UHDDevice<>::ReferenceType ref;
 };
@@ -135,6 +136,7 @@ static int handle_options(int argc, char **argv, struct lte_config *config)
     config->threads = 1;
     config->rnti = 0xffff;
     config->ref = UHDDevice<>::REF_INTERNAL;
+    config->port = 7878;
 
     while ((option = getopt(argc, argv, "ha:c:f:g:j:b:r:xp")) != -1) {
         switch (option) {
@@ -230,7 +232,7 @@ int main(int argc, char **argv)
     for (int i = 0; i < NUM_RECV_SUBFRAMES; i++)
         pdschReturnQueue->write(std::make_shared<LteBuffer>(config.chans));
 
-    asn1->open();
+    asn1->open(config.port);
     std::vector<DecoderPDSCH> decoders(config.threads,
                                        DecoderPDSCH(config.chans));
     for (auto &d : decoders) {

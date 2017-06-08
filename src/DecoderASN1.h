@@ -14,7 +14,7 @@ public:
     DecoderASN1 &operator=(const DecoderASN1 &d) = default;
     DecoderASN1 &operator=(DecoderASN1 &&d) = default;
 
-    bool open(int port = 8888);
+    bool open(uint16_t port);
     bool send(const char *data, int len, uint16_t rnti);
 
 private:

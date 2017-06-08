@@ -58,7 +58,7 @@ struct mac_frame {
 
 using namespace std;
 
-bool DecoderASN1::open(int port)
+bool DecoderASN1::open(uint16_t port)
 {
     _sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (_sock < 0) {
