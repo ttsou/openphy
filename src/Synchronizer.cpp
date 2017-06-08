@@ -350,7 +350,7 @@ bool Synchronizer::decodePBCH(struct lte_time *time, struct lte_mib *mib)
 /*
  * Base drive sequence includes PSS synchronization stages 1-3
  */
-void Synchronizer::drive(struct lte_time *time, int adjust)
+void Synchronizer::drive(struct lte_time *time)
 {
     switch (_rx->state) {
     case LTE_STATE_PSS_SYNC:

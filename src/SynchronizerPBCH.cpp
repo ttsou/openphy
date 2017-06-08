@@ -34,7 +34,7 @@ using namespace std;
 /*
  * PBCH drive sequence
  */
-void SynchronizerPBCH::drive(int adjust)
+void SynchronizerPBCH::drive()
 {
     struct lte_time *ltime = &_rx->time;
     struct lte_mib mib;
@@ -44,7 +44,7 @@ void SynchronizerPBCH::drive(int adjust)
     if (!ltime->subframe)
         ltime->frame = (ltime->frame + 1) % 1024;
 
-    Synchronizer::drive(ltime, adjust);
+    Synchronizer::drive(ltime);
 
     auto logFreq = [](auto freq) {
         ostringstream ost;
@@ -80,14 +80,12 @@ void SynchronizerPBCH::start()
     IOInterface<complex<short>>::start();
 
     for (int counter = 0;; counter++) {
-        int shift = getBuffer(_converter.raw(), counter,
-                              _rx->sync.coarse,
-                              _rx->sync.fine, 0);
+        getBuffer(_converter.raw(), counter, _rx->sync.coarse, _rx->sync.fine, 0);
         _rx->sync.coarse = 0;
         _rx->sync.fine = 0;
 
         if (!_mibValid)
-            drive(shift);
+            drive();
 
         _converter.reset();
 

@@ -47,7 +47,7 @@ protected:
     StatePSS syncPSS4();
 
     StateSSS syncSSS();
-    void drive(struct lte_time *ltime, int adjust);
+    void drive(struct lte_time *ltime);
 
     void resetState(ResetFreq r = ResetFreq::True);
     void setCellId(int cellId);

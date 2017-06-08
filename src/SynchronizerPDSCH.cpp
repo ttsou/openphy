@@ -60,7 +60,7 @@ void SynchronizerPDSCH::drive(int adjust)
     if (!time->subframe)
         time->frame = (time->frame + 1) % 1024;
 
-    Synchronizer::drive(time, adjust);
+    Synchronizer::drive(time);
 
     switch (_rx->state) {
     case LTE_STATE_PBCH:
