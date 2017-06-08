@@ -179,8 +179,8 @@ void Converter<T>::delayPDSCH(vector<vector<complex<float>>> &v, int offset)
 
     for (auto &vi : v) {
         vi.resize(bi->size());
-        auto iter = copy(end(*pi) - _taps/2 - offset, end(*pi), begin(vi));
-        copy(bi->begin(), bi->begin() + distance(iter, end(vi)), iter);
+        auto iter = copy(pi->end() - _taps/2 - offset, pi->end(), begin(vi));
+        copy_n(bi->begin(), distance(iter, end(vi)), iter);
         pi++;
         bi++;
     }
