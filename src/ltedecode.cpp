@@ -76,15 +76,15 @@ static void print_help()
 
 static void print_config(Config *config)
 {
-    map<UHDDevice<>::ReferenceType, string> refMap = {
+    std::map<UHDDevice<>::ReferenceType, std::string> refMap = {
         { UHDDevice<>::REF_INTERNAL, "Internal" },
         { UHDDevice<>::REF_EXTERNAL, "External" },
         { UHDDevice<>::REF_GPS,      "GPS"      },
     };
 
     auto rntiString = [](uint16_t rnti) {
-        stringstream ss;
-        ss << "0x" << setfill('0') << setw(4) << hex << rnti;
+        std::stringstream ss;
+        ss << "0x" << std::setfill('0') << std::setw(4) << std::hex << rnti;
         switch (rnti) {
         case 0xffff:
             ss << " (SI-RNTI)";
@@ -120,7 +120,7 @@ static void print_config(Config *config)
 
 static bool handle_options(int argc, char **argv, Config &config)
 {
-    const map<string, UHDDevice<>::ReferenceType> refMap = {
+    const std::map<std::string, UHDDevice<>::ReferenceType> refMap = {
       { "internal", UHDDevice<>::REF_INTERNAL },
       { "external", UHDDevice<>::REF_EXTERNAL },
       { "gpsdo",    UHDDevice<>::REF_GPS      },
@@ -176,7 +176,7 @@ static bool handle_options(int argc, char **argv, Config &config)
             config.rbs = atoi(optarg);
             break;
         case 'n':
-            config.rnti = stoi(optarg, nullptr, 0);
+            config.rnti = std::stoi(optarg, nullptr, 0);
             break;
         case 'r':
             if (!setParam(refMap, optarg, config.ref)) return false;

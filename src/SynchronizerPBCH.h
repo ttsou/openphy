@@ -3,8 +3,6 @@
 
 #include "Synchronizer.h"
 
-using namespace std;
-
 class SynchronizerPBCH : public Synchronizer {
 public:
     SynchronizerPBCH(size_t chans = 1);

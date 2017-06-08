@@ -29,7 +29,7 @@ public:
     void shiftFreq(double offset);
     void resetFreq();
 
-    int getBuffer(vector<vector<T>> &bufs,
+    int getBuffer(std::vector<std::vector<T>> &bufs,
                   unsigned frameNum, int coarse, int fine, int state);
     int comp_timing_offset(int coarse, int fine, int state);
 
@@ -38,10 +38,10 @@ protected:
     unsigned _rbs;
 
 private:
-    shared_ptr<UHDDevice<T>> _usrp;
+    std::shared_ptr<UHDDevice<T>> _usrp;
     unsigned _prevFrameNum, _frameSize, _frameMod = 10;
     int _ref, _pssTimingAdjust;
-    string _args;
+    std::string _args;
     int64_t _ts0;
     double _freq, _gain;
 };

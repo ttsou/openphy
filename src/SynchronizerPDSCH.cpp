@@ -29,6 +29,8 @@ extern "C" {
 #include "lte/log.h"
 }
 
+using namespace std;
+
 void SynchronizerPDSCH::handleFreqOffset(double offset)
 {
     _freqOffsets.push(offset);

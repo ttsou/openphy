@@ -5,8 +5,6 @@
 #include <vector>
 #include <complex>
 
-using namespace std;
-
 struct cxvec;
 
 class SignalVector {
@@ -23,19 +21,19 @@ public:
     size_t size() const;
     void reverse();
 
-    const complex<float> *cbegin() const;
-    const complex<float> *cend() const;
-    const complex<float> *chead() const;
+    const std::complex<float> *cbegin() const;
+    const std::complex<float> *cend() const;
+    const std::complex<float> *chead() const;
 
-    complex<float> *begin();
-    complex<float> *end();
-    complex<float> *head();
-    complex<float>& operator[](int i);
+    std::complex<float> *begin();
+    std::complex<float> *end();
+    std::complex<float> *head();
+    std::complex<float>& operator[](int i);
 
     /* Dangerous calls */
     SignalVector(struct cxvec *v);
     struct cxvec *cv();
-    static void translateVectors(vector<SignalVector> &v, struct cxvec **c);
+    static void translateVectors(std::vector<SignalVector> &v, struct cxvec **c);
 
 private:
     bool _local;

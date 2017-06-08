@@ -29,6 +29,8 @@ extern "C" {
 #include "lte/log.h"
 }
 
+using namespace std;
+
 /*
  * PBCH drive sequence
  */

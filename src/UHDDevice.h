@@ -8,9 +8,7 @@
 
 #include "TimestampBuffer.h"
 
-using namespace std;
-
-template <typename T = complex<short>>
+template <typename T = std::complex<short>>
 class UHDDevice {
     typedef TimestampBuffer<T> TSBuffer;
 
@@ -35,7 +33,7 @@ public:
     int64_t get_ts_low();
 
     int reload();
-    int pull(vector<vector<T>> &bufs, size_t len, int64_t ts);
+    int pull(std::vector<std::vector<T>> &bufs, size_t len, int64_t ts);
 
     enum ReferenceType {
         REF_INTERNAL,
@@ -62,7 +60,7 @@ private:
     double _offset_freq;
     uhd::usrp::multi_usrp::sptr _dev;
     uhd::rx_streamer::sptr _stream;
-    vector<shared_ptr<TSBuffer>> _rx_bufs;
+    std::vector<std::shared_ptr<TSBuffer>> _rx_bufs;
 };
 
 #endif /* _UHDDEVICE_H_ */

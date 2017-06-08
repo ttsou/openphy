@@ -18,6 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <complex>
 #include "Synchronizer.h"
 
 extern "C" {
@@ -31,6 +32,8 @@ extern "C" {
 #include "lte/ofdm.h"
 #include "lte/log.h"
 }
+
+using namespace std;
 
 /* Log PSS detection magnitude */
 void Synchronizer::logPSS(float mag, int offset)

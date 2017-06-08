@@ -6,8 +6,6 @@
 #include <string>
 #include <vector>
 
-using namespace std;
-
 template <typename T>
 class TimestampBuffer {
 public:
@@ -24,7 +22,7 @@ public:
 
 	size_t avail_smpls(int64_t ts) const;
 
-	ssize_t read(vector<T> &buf, int64_t ts);
+	ssize_t read(std::vector<T> &buf, int64_t ts);
 	ssize_t write(const T *buf, size_t len, int64_t ts);
 	ssize_t write(const T *buf, size_t len);
 	ssize_t write(int64_t ts);
@@ -41,7 +39,7 @@ public:
 	int64_t get_last_time() const { return time_end; }
 	int64_t get_first_time() const { return time_start; }
 private:
-	vector<T> data;
+	std::vector<T> data;
 	int64_t time_start, time_end, data_start, data_end;
 };
 

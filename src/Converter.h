@@ -8,8 +8,6 @@
 #include "Resampler.h"
 #include "SignalVector.h"
 
-using namespace std;
-
 template <typename T>
 class Converter {
 public:
@@ -28,7 +26,7 @@ public:
     void convertPSS();
     void convertPBCH(size_t channel, SignalVector &v);
 
-    void delayPDSCH(vector<vector<complex<float>>> &v, int offset);
+    void delayPDSCH(std::vector<std::vector<std::complex<float>>> &v, int offset);
     void update();
     void reset();
 
@@ -41,15 +39,15 @@ private:
     size_t channels() const;
     size_t pdschLen() const;
 
-    vector<vector<T>> _buffers;
+    std::vector<std::vector<T>> _buffers;
 
-    vector<SignalVector> _prev;
-    vector<SignalVector> _pdsch;
-    vector<SignalVector> _pbch;
-    vector<SignalVector> _pss;
+    std::vector<SignalVector> _prev;
+    std::vector<SignalVector> _pdsch;
+    std::vector<SignalVector> _pbch;
+    std::vector<SignalVector> _pss;
 
-    vector<Resampler> _pssResamplers;
-    vector<Resampler> _pbchResamplers;
+    std::vector<Resampler> _pssResamplers;
+    std::vector<Resampler> _pbchResamplers;
 
     bool _convertPDSCH, _convertPBCH, _convertPSS;
     size_t _taps, _rbs;

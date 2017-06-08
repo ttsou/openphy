@@ -13,9 +13,7 @@ extern "C" {
 struct lte_rx;
 struct lte_ref_map;
 
-using namespace std;
-
-typedef complex<short> SampleType;
+typedef std::complex<short> SampleType;
 
 class Synchronizer : protected IOInterface<SampleType> {
 public:
@@ -63,12 +61,11 @@ protected:
     Converter<SampleType> _converter;
     int _cellId, _pssMisses, _sssMisses;
     double _freq, _gain;
-    atomic<bool> _reset, _stop;
-
-    map<int, string> _stateStrings;
+    std::atomic<bool> _reset, _stop;
+    std::map<int, std::string> _stateStrings;
 
     /* Internal C objects */
-    vector<struct lte_ref_map *[4]> _pbchRefMaps;
+    std::vector<struct lte_ref_map *[4]> _pbchRefMaps;
     struct lte_rx *_rx;
     struct lte_sync _sync;
 };

@@ -10,10 +10,8 @@
 #include "BufferQueue.h"
 #include "DecoderASN1.h"
 
-using namespace std;
-
 struct lte_ref_map;
-typedef vector<int8_t> ScramSequence;
+typedef std::vector<int8_t> ScramSequence;
 
 class DecoderPDSCH {
 public:
@@ -25,11 +23,11 @@ public:
     DecoderPDSCH &operator=(const DecoderPDSCH &d);
     DecoderPDSCH &operator=(DecoderPDSCH &&d);
 
-    void attachInboundQueue(shared_ptr<BufferQueue> q);
-    void attachOutboundQueue(shared_ptr<BufferQueue> q);
-    void attachDecoderASN1(shared_ptr<DecoderASN1> d);
+    void attachInboundQueue(std::shared_ptr<BufferQueue> q);
+    void attachOutboundQueue(std::shared_ptr<BufferQueue> q);
+    void attachDecoderASN1(std::shared_ptr<DecoderASN1> d);
 
-    bool addRNTI(unsigned rnti, string s = "");
+    bool addRNTI(unsigned rnti, std::string s = "");
     bool delRNTI(unsigned rnti);
 
     void start();
@@ -41,23 +39,23 @@ private:
     void generateReferences();
     void initSubframes();
 
-    void readBufferState(shared_ptr<LteBuffer> lbuf);
-    void setFreqOffset(shared_ptr<LteBuffer> lbuf);
-    void decode(shared_ptr<LteBuffer> lbuf, int cfi);
+    void readBufferState(std::shared_ptr<LteBuffer> lbuf);
+    void setFreqOffset(std::shared_ptr<LteBuffer> lbuf);
+    void decode(std::shared_ptr<LteBuffer> lbuf, int cfi);
 
-    vector<ScramSequence> _pdcchScramSeq;
-    vector<ScramSequence> _pcfichScramSeq;
-    map<unsigned, string> _rntis;
+    std::vector<ScramSequence> _pdcchScramSeq;
+    std::vector<ScramSequence> _pcfichScramSeq;
+    std::map<unsigned, std::string> _rntis;
 
     bool _cellIdValid;
     unsigned _cellId, _rbs, _ng, _txAntennas;
 
-    shared_ptr<BufferQueue> _inboundQueue, _outboundQueue;
-    shared_ptr<DecoderASN1> _decoderASN1;
+    std::shared_ptr<BufferQueue> _inboundQueue, _outboundQueue;
+    std::shared_ptr<DecoderASN1> _decoderASN1;
 
     struct lte_pdsch_blk *_block;
-    vector<struct lte_subframe *> _subframes;
-    vector<struct lte_ref_map *[4]> _pdcchRefMaps;
+    std::vector<struct lte_subframe *> _subframes;
+    std::vector<struct lte_ref_map *[4]> _pdcchRefMaps;
 };
 
 #endif /* _DECODER_PDSCH_ */

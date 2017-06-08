@@ -28,6 +28,8 @@
 
 #include "TimestampBuffer.h"
 
+using namespace std;
+
 template <typename T>
 TimestampBuffer<T>::TimestampBuffer(size_t len)
     : data(len), time_start(0), time_end(0), data_start(0), data_end(0)
