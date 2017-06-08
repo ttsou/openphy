@@ -20,10 +20,13 @@
 #include <thread>
 #include <cstdio>
 #include <string>
+#include <iomanip>
+#include <map>
 #include <math.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <getopt.h>
 
 #include "BufferQueue.h"
 #include "SynchronizerPBCH.h"
@@ -37,186 +40,194 @@ extern "C" {
 #include "lte/log.h"
 }
 
-typedef complex<short> type;
-
 /*
  * Number of LTE subframe buffers passed between PDSCH processing threads
  */
 #define NUM_RECV_SUBFRAMES        128
 
-struct lte_config {
-    std::string args;
-    double freq;
-    double gain;
-    int chans;
-    int rbs;
-    int threads;
-    uint16_t port;
-    uint16_t rnti;
-    UHDDevice<>::ReferenceType ref;
+struct Config {
+    std::string args = "";
+    double freq      = 1e9;
+    double gain      = 50;
+    unsigned chans   = 1;
+    unsigned rbs     = 0;
+    unsigned threads = 1;
+    uint16_t port    = 7878;
+    uint16_t rnti    = 0xffff;
+    UHDDevice<>::ReferenceType ref = UHDDevice<>::REF_INTERNAL;
 };
 
 static void print_help()
 {
-        fprintf(stdout, "\nOptions:\n"
-        "  -h    This text\n"
-        "  -a    UHD device args\n"
-        "  -c    Number of receive channels (1 or 2)\n"
-        "  -f    Downlink frequency\n"
-        "  -g    RF receive gain\n"
-        "  -j    Number of PDSCH decoding threads (default = 1)\n"
-        "  -b    Number of LTE resource blocks (default = auto)\n"
-        "  -r    LTE RNTI (default = 0xFFFF)\n"
-        "  -x    Enable external device reference (default = off)\n"
-        "  -p    Enable GPSDO reference (default = off)\n\n");
+    fprintf(stdout, "\nOptions:\n"
+        "  -h  --help     This text\n"
+        "  -a  --args     UHD device args\n"
+        "  -c  --chans    Number of receive channels (1 or 2)\n"
+        "  -f  --freq     Downlink frequency\n"
+        "  -g  --gain     RF receive gain\n"
+        "  -r, --ref      Frequency reference (%s)\n"
+        "  -j  --threads  Number of PDSCH decoding threads (default = 1)\n"
+        "  -b  --rb       Number of LTE resource blocks (default = auto)\n"
+        "  -n  --rnti     LTE RNTI (default = 0xFFFF)\n"
+        "  -p  --port     Wireshark port\n\n",
+        "'internal', 'external', 'gps'"
+    );
 }
 
-static void print_config(struct lte_config *config)
+static void print_config(Config *config)
 {
-    std::string refstr;
+    map<UHDDevice<>::ReferenceType, string> refMap = {
+        { UHDDevice<>::REF_INTERNAL, "Internal" },
+        { UHDDevice<>::REF_EXTERNAL, "External" },
+        { UHDDevice<>::REF_GPS,      "GPS"      },
+    };
 
-    switch (config->ref) {
-    case UHDDevice<>::REF_INTERNAL:
-        refstr = "Internal";
-        break;
-    case UHDDevice<>::REF_EXTERNAL:
-        refstr = "External";
-        break;
-    case UHDDevice<>::REF_GPS:
-        refstr = "GPSDO";
-        break;
-    default:
-        refstr = "Unknown";
-    }
+    auto rntiString = [](uint16_t rnti) {
+        stringstream ss;
+        ss << "0x" << setfill('0') << setw(4) << hex << rnti;
+        switch (rnti) {
+        case 0xffff:
+            ss << " (SI-RNTI)";
+            break;
+        case 0xfffe:
+            ss << " (P-RNTI)";
+            break;
+        }
+        return ss.str();
+    };
 
     fprintf(stdout,
         "Config:\n"
         "    Device args.............. \"%s\"\n"
-        "    Downlink frequency....... %.3f MHz\n"
-        "    Receive gain............. %.2f dB\n"
-        "    Receive antennas......... %i\n"
-        "    Clock reference.......... %s\n"
-        "    PDSCH decoding threads... %i\n"
-        "    LTE resource blocks...... %i\n"
-        "    LTE RNTI................. 0x%04x\n"
+        "    Downlink frequency....... %.6f GHz\n"
+        "    Receive gain............. %.1f dB\n"
+        "    Receive antennas......... %u\n"
+        "    Frequency reference...... %s\n"
+        "    PDSCH decoding threads... %u\n"
+        "    LTE resource blocks...... %u\n"
+        "    LTE RNTI................. %s\n"
         "\n",
         config->args.c_str(),
-        config->freq / 1e6,
+        config->freq / 1e9,
         config->gain,
         config->chans,
-        refstr.c_str(),
+        refMap[config->ref].c_str(),
         config->threads,
         config->rbs,
-        config->rnti);
+        rntiString(config->rnti).c_str()
+    );
 }
 
-static bool valid_rbs(int rbs)
+static bool handle_options(int argc, char **argv, Config &config)
 {
-    switch (rbs) {
-    case 6:
-    case 15:
-    case 25:
-    case 50:
-    case 75:
-    case 100:
-        return true;
-    }
+    const map<string, UHDDevice<>::ReferenceType> refMap = {
+      { "internal", UHDDevice<>::REF_INTERNAL },
+      { "external", UHDDevice<>::REF_EXTERNAL },
+      { "gpsdo",    UHDDevice<>::REF_GPS      },
+      { "gps",      UHDDevice<>::REF_GPS      },
+    };
 
-    return false;
-}
+    auto setParam = [](const auto &m, auto arg, auto &val) {
+      auto mi = m.find(arg);
+      if (mi == m.end()) {
+        printf("Invalid parameter '%s'\n\n", arg);
+        return false;
+      }
+      val = mi->second;
+      return true;
+    };
 
-static int handle_options(int argc, char **argv, struct lte_config *config)
-{
+    const struct option longopts[] = {
+        { "args",    1, nullptr, 'a' },
+        { "help",    0, nullptr, 'h' },
+        { "chans",   1, nullptr, 'c' },
+        { "freq",    1, nullptr, 'f' },
+        { "gain",    1, nullptr, 'g' },
+        { "threads", 1, nullptr, 'j' },
+        { "rb",      1, nullptr, 'b' },
+        { "rnti",    1, nullptr, 'n' },
+        { "ref" ,    1, nullptr, 'r' },
+        { "port" ,   1, nullptr, 'p' },
+    };
+
     int option;
-
-    config->freq = -1.0;
-    config->gain = 0.0;
-    config->chans = 1;
-    config->rbs = 6;
-    config->threads = 1;
-    config->rnti = 0xffff;
-    config->ref = UHDDevice<>::REF_INTERNAL;
-    config->port = 7878;
-
-    while ((option = getopt(argc, argv, "ha:c:f:g:j:b:r:xp")) != -1) {
+    while ((option = getopt_long(argc, argv, "ha:c:f:g:j:b:n:r:", longopts, nullptr)) != -1) {
         switch (option) {
-        case 'h':
-            print_help();
-            return -1;
         case 'a':
-            config->args = optarg;
+            config.args = optarg;
             break;
         case 'c':
-            config->chans = atoi(optarg);
-            if ((config->chans != 1) && (config->chans != 2)) {
+            config.chans = atoi(optarg);
+            if (config.chans > 2) {
                 printf("Invalid number of channels\n");
-                return -1;
+                return false;
             }
             break;
         case 'f':
-            config->freq = atof(optarg);
+            config.freq = atof(optarg);
             break;
         case 'g':
-            config->gain = atof(optarg);
+            config.gain = atof(optarg);
             break;
         case 'j':
-            config->threads = atoi(optarg);
+            config.threads = atoi(optarg);
             break;
         case 'b':
-            config->rbs = atoi(optarg);
+            config.rbs = atoi(optarg);
+            break;
+        case 'n':
+            config.rnti = stoi(optarg, nullptr, 0);
             break;
         case 'r':
-            config->rnti = atoi(optarg);
-            break;
-        case 'x':
-            config->ref = UHDDevice<>::REF_EXTERNAL;
+            if (!setParam(refMap, optarg, config.ref)) return false;
             break;
         case 'p':
-            config->ref = UHDDevice<>::REF_GPS;
+            config.port = atoi(optarg);
             break;
+        case 'h':
         default:
-            print_help();
-            return -1;
+            return false;
         }
     }
 
-    if (config->threads < 1) {
-        printf("\nInvalid number of PDSCH decoding threads %i\n",
-               config->threads);
-        return -1;
-    }
+    auto validRB = [](auto rbs) {
+        switch (rbs) {
+        case 6:
+        case 15:
+        case 25:
+        case 50:
+        case 75:
+        case 100:
+            return true;
+        }
+        return false;
+    };
 
-    if (config->freq < 0.0) {
-        print_help();
-        printf("\nPlease specify downlink frequency\n");
-        return -1;
-    }
-
-    if (config->rbs && !valid_rbs(config->rbs)) {
-        print_help();
+    if (config.rbs && !validRB(config.rbs)) {
         printf("\nPlease specify valid number of resource blocks\n\n");
         printf("    LTE bandwidth      Resource Blocks\n");
+        printf("          Auto                 0\n");
         printf("       1.4 MHz                 6\n");
         printf("         3 MHz                15\n");
         printf("         5 MHz                25\n");
         printf("        10 MHz                50\n");
         printf("        15 MHz                75\n");
-        printf("        20 MHz               100\n\n");
-
-        return -1;
+        printf("        20 MHz               100\n");
+        return false;
     }
 
-    return 0;
+    return true;
 }
 
 int main(int argc, char **argv)
 {
-    struct lte_config config;
-    struct lte_buffer *buf;
+    Config config;
     std::vector<std::thread> threads;
 
-    if (handle_options(argc, argv, &config) < 0)
-        return -1;
+    if (!handle_options(argc, argv, config)) {
+        print_help();
+        return -EINVAL;
+    }
 
     print_config(&config);
 
