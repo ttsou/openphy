@@ -16,7 +16,7 @@ extern "C" {
 }
 
 #define MAC_LTE_START_STRING_LEN	7
-#define MAC_MAX_LEN			512
+#define MAC_MAX_LEN			1024
 
 /* Radio type */
 #define FDD_RADIO 1
@@ -106,7 +106,7 @@ bool DecoderASN1::send(const char *data, int len, uint16_t rnti)
     hdr.rnti_tag = MAC_LTE_RNTI_TAG;
     hdr.rnti = htons(rnti);
     hdr.payload_tag = MAC_LTE_PAYLOAD_TAG;
-    copy_n(data, len, hdr.payload);
+    copy_n(data, len > MAC_MAX_LEN ? MAC_MAX_LEN : len, hdr.payload);
 
     int rc = sendto(_sock, &hdr, sizeof(hdr) - (MAC_MAX_LEN - len),
                     0, (const struct sockaddr *) &_addr, sizeof(_addr));
