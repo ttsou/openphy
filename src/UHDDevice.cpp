@@ -122,8 +122,6 @@ void UHDDevice<T>::resetFreq()
     LOG_DEV(ost.str().c_str());
 }
 
-static int64_t last = 0;
-
 static double get_rate(int rbs)
 {
     switch (rbs) {
@@ -190,7 +188,7 @@ void UHDDevice<T>::start()
     uhd::stream_cmd_t cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
     cmd.stream_now = true;
     _dev->issue_stream_cmd(cmd);
-    last = 0;
+    _prev_ts = 0;
 }
 
 template <typename T>
@@ -207,25 +205,25 @@ int UHDDevice<T>::reload()
         size_t num = _stream->recv(pkt_ptrs, _spp, md, 1.0, true);
         if (num <= 0) {
             LOG_DEV_ERR("Receive timed out");
-            last = 0;
+            _prev_ts = 0;
             continue;
         } else if (num < _spp) {
             LOG_DEV_ERR("Received short packet");
-            last = 0;
+            _prev_ts = 0;
         }
 
         total += num;
         int64_t ts = md.time_spec.to_ticks(_rate);
 
-        if (last) {
-            if (ts < last)
+        if (_prev_ts) {
+            if (ts < _prev_ts)
                 throw runtime_error("Non-monotonic timestamps detected");
 
-            if ((size_t) (ts - last) == _spp - 1) {
+            if ((size_t) (ts - _prev_ts) == _spp - 1) {
                 ostringstream ost;
                 ost << "DEV   : " << "Correcting UHD timestamp slip - "
                                   << "Expected " << _spp << " samples, "
-                                  << "but read " << ts - last;
+                                  << "but read " << ts - _prev_ts;
                 LOG_ERR(ost.str().c_str());
                 ts++;
             }
@@ -242,7 +240,7 @@ int UHDDevice<T>::reload()
             }
         }
 
-        last = ts;
+        _prev_ts = ts;
 
         if (total >= _spp)
             break;
@@ -399,7 +397,7 @@ template <typename T>
 void UHDDevice<T>::reset()
 {
     stop();
-    last = 0;
+    _prev_ts = 0;
 }
 
 template <typename T>

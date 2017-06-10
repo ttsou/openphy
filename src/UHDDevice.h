@@ -58,6 +58,7 @@ private:
     double _rate;
     double _base_freq;
     double _offset_freq;
+    unsigned long long _prev_ts;
     uhd::usrp::multi_usrp::sptr _dev;
     uhd::rx_streamer::sptr _stream;
     std::vector<std::shared_ptr<TSBuffer>> _rx_bufs;
