@@ -76,7 +76,7 @@ static void print_help()
 
 static void print_config(Config *config)
 {
-    std::map<UHDDevice<>::ReferenceType, std::string> refMap = {
+    const std::map<UHDDevice<>::ReferenceType, std::string> refMap = {
         { UHDDevice<>::REF_INTERNAL, "Internal" },
         { UHDDevice<>::REF_EXTERNAL, "External" },
         { UHDDevice<>::REF_GPS,      "GPS"      },
@@ -111,7 +111,7 @@ static void print_config(Config *config)
         config->freq / 1e9,
         config->gain,
         config->chans,
-        refMap[config->ref].c_str(),
+        refMap.at(config->ref).c_str(),
         config->threads,
         config->rbs,
         rntiString(config->rnti).c_str()

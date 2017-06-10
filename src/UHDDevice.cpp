@@ -66,13 +66,13 @@ void UHDDevice<T>::init(int64_t &ts, size_t rbs,
         LOG_DEV_ERR("Unknown or unsupported device");
     }
 
-    map<DeviceType, string> argsMap {
+    const map<DeviceType, string> argsMap {
         { DEV_B200, "" },
         { DEV_B210, "" },
         { DEV_X300, "master_clock_rate=184.32e6" },
     };
 
-    addr = uhd::device_addr_t(args + argsMap[_type]);
+    addr = uhd::device_addr_t(args + argsMap.at(_type));
     try {
         _dev = uhd::usrp::multi_usrp::make(addr);
     } catch (const exception &ex) {
