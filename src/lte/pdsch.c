@@ -253,7 +253,7 @@ static int pdsch_extract_ref1(struct pdsch_slot **pdsch, int rx_antennas,
 		end = 12;
 	}
 
-	while (n < end) {
+	while (n+1 < end) {
 		int sc0, sc1;
 
 		if (lte_chk_ref((*pdsch)->slot->subframe,
