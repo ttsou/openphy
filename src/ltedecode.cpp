@@ -50,7 +50,7 @@ struct Config {
     double freq      = 1e9;
     double gain      = 50;
     unsigned chans   = 1;
-    unsigned rbs     = 0;
+    unsigned rbs     = 6;
     unsigned threads = 1;
     uint16_t port    = 7878;
     uint16_t rnti    = 0xffff;
@@ -203,7 +203,7 @@ static bool handle_options(int argc, char **argv, Config &config)
         return false;
     };
 
-    if (config.rbs && !validRB(config.rbs)) {
+    if (!validRB(config.rbs)) {
         printf("\nPlease specify valid number of resource blocks\n\n");
         printf("    LTE bandwidth      Resource Blocks\n");
         printf("          Auto                 0\n");
