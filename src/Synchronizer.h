@@ -54,7 +54,7 @@ protected:
     void generateReferences();
     bool decodePBCH(struct lte_time *time, struct lte_mib *mib);
 
-    void changeState(auto newState);
+    void changeState(lte_state newState);
     static void logPSS(float mag, int offset);
     static void logSSS(float offset);
 

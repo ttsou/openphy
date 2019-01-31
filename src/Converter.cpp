@@ -27,7 +27,7 @@ extern "C" {
 
 using namespace std;
 
-static bool use_fft_1536(auto rbs)
+static bool use_fft_1536(int rbs)
 {
     switch (rbs) {
     case 25:
@@ -50,7 +50,7 @@ static bool use_fft_1536(auto rbs)
  *        75          15.36 Msps        2
  *       100          23.04 Msps        1
  */
-static auto decim(auto rbs)
+static auto decim(int rbs)
 {
     switch (rbs) {
     case 6:

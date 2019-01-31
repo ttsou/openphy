@@ -425,7 +425,7 @@ void Synchronizer::stop()
     IOInterface<complex<short>>::stop();
 }
 
-void Synchronizer::changeState(auto newState)
+void Synchronizer::changeState(lte_state newState)
 {
     auto current = _rx->state;
     char sbuf[80];
