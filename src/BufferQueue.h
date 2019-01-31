@@ -14,8 +14,6 @@ public:
     BufferQueue(const BufferQueue &q);
     ~BufferQueue() = default;
 
-    BufferQueue &operator=(const BufferQueue &q);
-
     size_t size();
 
     std::shared_ptr<LteBuffer> read();

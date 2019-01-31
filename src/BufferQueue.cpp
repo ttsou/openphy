@@ -58,7 +58,3 @@ BufferQueue::BufferQueue(const BufferQueue &q)
   : BufferQueue()
 {
 }
-
-BufferQueue &BufferQueue::operator=(const BufferQueue &q)
-{
-}
