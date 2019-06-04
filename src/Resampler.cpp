@@ -58,13 +58,12 @@ void Resampler::init(unsigned cutoff)
      * Populate partition filters and reverse the coefficients per
      * convolution requirements.
      */
-    auto iter = begin(proto);
-    for (auto &p : partitions) {
-        for_each(begin(p), end(p), [scale, &iter](auto &a) {
-            a = *iter++ * scale;
-        });
-        p.reverse();
+    for (int j = 0; j < filterLen; j++) {
+        for (int n = 0; n < P; n++)
+            partitions[n][j] = proto[j * P + n] * scale;
     }
+    for (auto &p:partitions)
+        reverse(p.begin(), p.end());
 }
 
 void Resampler::rotate(SignalVector &in, SignalVector &out)
