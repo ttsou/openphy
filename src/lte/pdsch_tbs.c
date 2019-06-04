@@ -564,7 +564,7 @@ static int tbs_get_mod_order(struct lte_dci *dci, int hom)
 {
 	int mod;
 
-	if (dci->rnti == P_RNTI || dci->rnti == P_RNTI)
+	if (dci->rnti == P_RNTI || dci->rnti == SI_RNTI)
 		return 2;
 
 	/* RA-RNTI hack */
