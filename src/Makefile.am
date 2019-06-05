@@ -22,6 +22,7 @@ libopenphy_la_SOURCES = \
 	SynchronizerPDSCH.cpp \
 	TimestampBuffer.cpp \
 	UHDDevice.cpp \
+	FileDevice.cpp \
 	FreqAverager.cpp \
 	DecoderASN1.cpp \
 	LteBuffer.cpp
@@ -47,4 +48,5 @@ noinst_HEADERS = \
 	SynchronizerPDSCH.h \
 	TimestampBuffer.h \
 	Device.h \
+	FileDevice.h \
 	UHDDevice.h

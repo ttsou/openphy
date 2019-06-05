@@ -29,6 +29,7 @@
 
 #include "IOInterface.h"
 #include "UHDDevice.h"
+#include "FileDevice.h"
 
 extern "C" {
 #include "lte/log.h"
@@ -118,18 +119,30 @@ int (*fine_timing_offset)(int coarse, int fine) = NULL;
 
 template <typename T>
 IOInterface<T>::IOInterface(size_t chans)
-  : _chans(chans), _prevFrameNum(0)
+  : _chans(chans), _prevFrameNum(0), _ref(UHDDevice<>::REF_UNKNOWN)
 {
 }
 
 template <typename T>
-bool IOInterface<T>::open(unsigned rbs)
+bool IOInterface<T>::openFile(unsigned rbs, const std::string &filename)
 {
-    return open(rbs, _ref, _args);
+    try {
+        _device = make_shared<FileDevice<T>>(_chans);
+        _device->init(_ts0, rbs, _ref, filename);
+    } catch (exception& e) {
+        ostringstream ost;
+        ost << "DEV   : " << e.what();
+        LOG_ERR(ost.str().c_str());
+        return false;
+    }
+
+    _rbs = rbs;
+    _args = filename;
+    return open(rbs);
 }
 
 template <typename T>
-bool IOInterface<T>::open(unsigned rbs, int ref, const std::string &args)
+bool IOInterface<T>::openDevice(unsigned rbs, int ref, const std::string &args)
 {
     try {
         _device = make_shared<UHDDevice<T>>(_chans);
@@ -141,7 +154,23 @@ bool IOInterface<T>::open(unsigned rbs, int ref, const std::string &args)
     _rbs = rbs;
     _ref = ref;
     _args = args;
+    return open(rbs);
+}
 
+template <typename T>
+bool IOInterface<T>::reopen(unsigned rbs)
+{
+    if (isFile()) {
+        LOG_DEV_ERR("File device cannot be reopened");
+        LOG_DEV_ERR("Resource block configuration mismatch");
+        return false;
+    }
+    return openDevice(rbs, _ref, _args);
+}
+
+template <typename T>
+bool IOInterface<T>::open(unsigned rbs)
+{
     int baseQ = get_decim(rbs);
     if (use_fft_1536(rbs))
         _pssTimingAdjust = 32 * 3 / 4 / baseQ;
@@ -181,6 +210,12 @@ bool IOInterface<T>::open(unsigned rbs, int ref, const std::string &args)
     }
 
     return true;
+}
+
+template <typename T>
+bool IOInterface<T>::isFile() const
+{
+    return dynamic_pointer_cast<FileDevice<T>>(_device) != nullptr;
 }
 
 template <typename T>

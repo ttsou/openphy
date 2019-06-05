@@ -88,7 +88,7 @@ template <typename T>
 bool Synchronizer<T>::reopen(size_t rbs)
 {
     IOInterface<T>::stop();
-    if (!IOInterface<T>::open(rbs))
+    if (!IOInterface<T>::reopen(rbs))
         return false;
 
     lte_free(_rx);
@@ -112,11 +112,24 @@ bool Synchronizer<T>::reopen(size_t rbs)
 }
 
 template <typename T>
-bool Synchronizer<T>::open(size_t rbs, int ref, const std::string &args)
+bool Synchronizer<T>::openFile(size_t rbs, const std::string &filename)
 {
-    if (!IOInterface<T>::open(rbs, ref, args))
+    if (!IOInterface<T>::openFile(rbs, filename))
         return false;
+    return open(rbs);
+}
 
+template <typename T>
+bool Synchronizer<T>::openDevice(size_t rbs, int ref, const std::string &args)
+{
+    if (!IOInterface<T>::openDevice(rbs, ref, args))
+        return false;
+    return open(rbs);
+}
+
+template <typename T>
+bool Synchronizer<T>::open(size_t rbs)
+{
     lte_free(_rx);
 
     _rx = lte_init();

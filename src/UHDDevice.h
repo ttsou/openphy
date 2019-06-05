@@ -39,6 +39,7 @@ public:
         REF_INTERNAL,
         REF_EXTERNAL,
         REF_GPS,
+        REF_UNKNOWN,
     };
 
     enum DeviceType {

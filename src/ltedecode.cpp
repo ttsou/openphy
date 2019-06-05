@@ -52,12 +52,13 @@ enum SampleType {
 };
 
 struct Config {
-    std::string args = "";
+    std::string args;
+    std::string filename;
     SampleType sampType = COMPLEX_FLOAT; 
     double freq      = 1e9;
     double gain      = 50;
     unsigned chans   = 1;
-    unsigned rbs     = 6;
+    unsigned rbs     = 0;
     unsigned threads = 1;
     uint16_t port    = 7878;
     uint16_t rnti    = 0xffff;
@@ -77,7 +78,8 @@ static void print_help()
         "  -b  --rb       Number of LTE resource blocks (default = auto)\n"
         "  -n  --rnti     LTE RNTI (default = 0xFFFF)\n"
         "  -p  --port     Wireshark port\n"
-        "  -s  --samp     Sample format('short', 'float')\n\n",
+        "  -s  --samp     Sample format('short', 'float')\n"
+        "  -F  --file     Read from file instead of device\n\n",
         "'internal', 'external', 'gps'"
     );
 }
@@ -112,6 +114,7 @@ static void print_config(Config *config)
     fprintf(stdout,
         "Config:\n"
         "    Device args.............. \"%s\"\n"
+        "    Filename ................ \"%s\"\n"
         "    Sample type ............. \"%s\"\n"
         "    Downlink frequency....... %.6f GHz\n"
         "    Receive gain............. %.1f dB\n"
@@ -122,6 +125,7 @@ static void print_config(Config *config)
         "    LTE RNTI................. %s\n"
         "\n",
         config->args.c_str(),
+        config->filename.c_str(),
         sampMap.at(config->sampType).c_str(),
         config->freq / 1e9,
         config->gain,
@@ -168,11 +172,12 @@ static bool handle_options(int argc, char **argv, Config &config)
         { "rnti",    1, nullptr, 'n' },
         { "ref" ,    1, nullptr, 'r' },
         { "port",    1, nullptr, 'p' },
+        { "file",    1, nullptr, 'F' },
         { "samp",    1, nullptr, 's' },
     };
 
     int option;
-    while ((option = getopt_long(argc, argv, "ha:c:f:g:j:b:n:r:p:s:", longopts, nullptr)) != -1) {
+    while ((option = getopt_long(argc, argv, "ha:c:f:g:j:b:n:r:p:F:s:", longopts, nullptr)) != -1) {
         switch (option) {
         case 'a':
             config.args = optarg;
@@ -205,6 +210,14 @@ static bool handle_options(int argc, char **argv, Config &config)
         case 'p':
             config.port = atoi(optarg);
             break;
+        case 'F':
+            config.filename = optarg;
+            if (config.filename.empty()) {
+                printf("\nFilename required\n");
+                print_help();
+                return false;
+            }
+            break;
         case 's':
             if (!setParam(sampMap, optarg, config.sampType)) return false;
             break;
@@ -226,6 +239,10 @@ static bool handle_options(int argc, char **argv, Config &config)
         }
         return false;
     };
+
+    /* For non-file device set default to minimum bandwidth for initial search */
+    if (config.filename.empty() && !config.rbs)
+        config.rbs = 6;
 
     if (!validRB(config.rbs)) {
         printf("\nPlease specify valid number of resource blocks\n\n");
@@ -256,6 +273,20 @@ public:
         auto pdschReturnQueue = std::make_shared<BufferQueue>();
         auto asn1 = std::make_shared<DecoderASN1>();
 
+        SynchronizerPDSCH<T> sync(config.chans);
+        sync.attachInboundQueue(pdschReturnQueue);
+        sync.attachOutboundQueue(pdschQueue);
+
+        if (!config.filename.empty()) {
+            if (!sync.openFile(config.rbs, config.filename))
+                return;
+        } else {
+            if (!sync.openDevice(config.rbs, config.ref, config.args)) {
+                fprintf(stderr, "Radio: Failed to initialize\n");
+                return;
+            }
+        }
+
         /* Prime the queue */
         for (int i = 0; i < NUM_RECV_SUBFRAMES; i++)
             pdschReturnQueue->write(std::make_shared<LteBuffer>(config.chans));
@@ -271,14 +302,6 @@ public:
             threads.push_back(std::thread(&DecoderPDSCH::start, &d));
         }
 
-        SynchronizerPDSCH<T> sync(config.chans);
-        sync.attachInboundQueue(pdschReturnQueue);
-        sync.attachOutboundQueue(pdschQueue);
-
-        if (!sync.open(config.rbs, config.ref, config.args)) {
-            fprintf(stderr, "Radio: Failed to initialize\n");
-            return;
-        }
         sync.setFreq(config.freq);
         sync.setGain(config.gain);
         sync.start();
@@ -287,7 +310,6 @@ public:
             t.join();
     }
 };
-        
 
 int main(int argc, char **argv)
 {

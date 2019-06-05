@@ -71,7 +71,7 @@ void SynchronizerPDSCH<T>::drive(int adjust)
                 lte_log_time(time);
                 if (mib.rbs != IOInterface<T>::_rbs) {
                     IOInterface<T>::_rbs = mib.rbs;
-                    IOInterface<T>::open(IOInterface<T>::_rbs);
+                    IOInterface<T>::reopen(IOInterface<T>::_rbs);
                     Synchronizer<T>::changeState(LTE_STATE_PSS_SYNC);
                 } else {
                     Synchronizer<T>::changeState(LTE_STATE_PDSCH_SYNC);
@@ -96,7 +96,8 @@ void SynchronizerPDSCH<T>::drive(int adjust)
         }
     case LTE_STATE_PDSCH:
         if (Synchronizer<T>::timePDSCH(time)) {
-            auto lbuf = _inboundQueue->readNoBlock();
+            auto lbuf = IOInterface<T>::isFile() ? _inboundQueue->read() :
+                                                   _inboundQueue->readNoBlock();
             if (!lbuf) {
                 LOG_ERR("SYNC  : Dropped frame");
                 break;

@@ -26,7 +26,8 @@ public:
     Synchronizer(const Synchronizer &) = delete;
     Synchronizer &operator=(const Synchronizer &) = delete;
 
-    bool open(size_t rbs, int ref, const std::string &args);
+    bool openFile(size_t rbs, const std::string &filename);
+    bool openDevice(size_t rbs, int ref, const std::string &args);
     bool reopen(size_t rbs);
     void reset();
     void stop();

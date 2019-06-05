@@ -15,8 +15,10 @@ public:
     IOInterface(const IOInterface &) = delete;
     IOInterface &operator=(const IOInterface &) = delete;
 
-    bool open(unsigned rbs);
-    bool open(unsigned rbs, int ref, const std::string &args);
+    bool openFile(unsigned rbs, const std::string &filename);
+    bool openDevice(unsigned rbs, int ref, const std::string &args);
+    bool reopen(unsigned rbs);
+    bool isFile() const;
     void start();
     void stop();
     void reset();
@@ -39,6 +41,7 @@ protected:
     unsigned _rbs;
 
 private:
+    bool open(unsigned rbs);
     std::shared_ptr<Device<T>> _device;
     unsigned _prevFrameNum, _frameSize, _frameMod = 10;
     int _ref, _pssTimingAdjust;
