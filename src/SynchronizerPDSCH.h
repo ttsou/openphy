@@ -5,7 +5,8 @@
 #include "BufferQueue.h"
 #include "FreqAverager.h"
 
-class SynchronizerPDSCH : public Synchronizer{
+template <typename T>
+class SynchronizerPDSCH : public Synchronizer<T> {
 public:
     SynchronizerPDSCH(size_t chans = 1);
 

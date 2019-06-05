@@ -13,9 +13,12 @@ extern "C" {
 struct lte_rx;
 struct lte_ref_map;
 
-typedef std::complex<short> SampleType;
+enum class SyncResetFreq : bool { False, True };
+enum class SyncStatePSS : bool { NotFound, Found };
+enum class SyncStateSSS { Searching, NotFound, Found };
 
-class Synchronizer : protected IOInterface<SampleType> {
+template <typename T>
+class Synchronizer : protected IOInterface<T> {
 public:
     Synchronizer(size_t chans = 1);
     virtual ~Synchronizer();
@@ -32,24 +35,22 @@ public:
     void setGain(double gain);
 
 protected:
+    bool open(size_t rbs);
+
     static bool timePSS(struct lte_time *t);
     static bool timeSSS(struct lte_time *t);
     static bool timePBCH(struct lte_time *t);
     static bool timePDSCH(struct lte_time *t);
 
-    enum class ResetFreq : bool { False, True };
-    enum class StatePSS : bool { NotFound, Found };
-    enum class StateSSS { Searching, NotFound, Found };
+    SyncStatePSS syncPSS1();
+    SyncStatePSS syncPSS2();
+    SyncStatePSS syncPSS3();
+    SyncStatePSS syncPSS4();
+    SyncStateSSS syncSSS();
 
-    StatePSS syncPSS1();
-    StatePSS syncPSS2();
-    StatePSS syncPSS3();
-    StatePSS syncPSS4();
-
-    StateSSS syncSSS();
     void drive(struct lte_time *ltime);
 
-    void resetState(ResetFreq r = ResetFreq::True);
+    void resetState(SyncResetFreq r = SyncResetFreq::True);
     void setCellId(int cellId);
     void generateReferences();
     bool decodePBCH(struct lte_time *time, struct lte_mib *mib);
@@ -58,7 +59,7 @@ protected:
     static void logPSS(float mag, int offset);
     static void logSSS(float offset);
 
-    Converter<SampleType> _converter;
+    Converter<T> _converter;
     int _cellId, _pssMisses, _sssMisses;
     double _freq, _gain;
     std::atomic<bool> _reset, _stop;

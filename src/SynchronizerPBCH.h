@@ -3,7 +3,8 @@
 
 #include "Synchronizer.h"
 
-class SynchronizerPBCH : public Synchronizer {
+template <typename T>
+class SynchronizerPBCH : public Synchronizer<T> {
 public:
     SynchronizerPBCH(size_t chans = 1);
 

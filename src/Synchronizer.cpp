@@ -36,7 +36,8 @@ extern "C" {
 using namespace std;
 
 /* Log PSS detection magnitude */
-void Synchronizer::logPSS(float mag, int offset)
+template <typename T>
+void Synchronizer<T>::logPSS(float mag, int offset)
 {
     char sbuf[80];
     snprintf(sbuf, 80, "PSS   : PSS detected, "
@@ -45,7 +46,8 @@ void Synchronizer::logPSS(float mag, int offset)
 }
 
 /* Log SSS frequency offset */
-void Synchronizer::logSSS(float offset)
+template <typename T>
+void Synchronizer<T>::logSSS(float offset)
 {
     char sbuf[80];
     snprintf(sbuf, 80, "SSS   : "
@@ -53,8 +55,9 @@ void Synchronizer::logSSS(float offset)
     LOG_SYNC(sbuf);
 }
 
-Synchronizer::Synchronizer(size_t chans)
-  : IOInterface<complex<short>>(chans),
+template <typename T>
+Synchronizer<T>::Synchronizer(size_t chans)
+  : IOInterface<T>(chans),
     _rx(nullptr), _converter(chans), _pbchRefMaps(2)
 {
     _stateStrings = decltype(_stateStrings) {
@@ -68,7 +71,8 @@ Synchronizer::Synchronizer(size_t chans)
     };
 }
 
-Synchronizer::~Synchronizer()
+template <typename T>
+Synchronizer<T>::~Synchronizer()
 {
     lte_free(_rx);
 
@@ -80,10 +84,11 @@ Synchronizer::~Synchronizer()
     }
 }
 
-bool Synchronizer::reopen(size_t rbs)
+template <typename T>
+bool Synchronizer<T>::reopen(size_t rbs)
 {
-    IOInterface<complex<short>>::stop();
-    if (!IOInterface<complex<short>>::open(rbs))
+    IOInterface<T>::stop();
+    if (!IOInterface<T>::open(rbs))
         return false;
 
     lte_free(_rx);
@@ -102,13 +107,14 @@ bool Synchronizer::reopen(size_t rbs)
     setFreq(_freq);
     setGain(_gain);
 
-    IOInterface<complex<short>>::start();
+    IOInterface<T>::start();
     return true;
 }
 
-bool Synchronizer::open(size_t rbs, int ref, const std::string &args)
+template <typename T>
+bool Synchronizer<T>::open(size_t rbs, int ref, const std::string &args)
 {
-    if (!IOInterface<complex<short>>::open(rbs, ref, args))
+    if (!IOInterface<T>::open(rbs, ref, args))
         return false;
 
     lte_free(_rx);
@@ -126,50 +132,57 @@ bool Synchronizer::open(size_t rbs, int ref, const std::string &args)
     return true;
 }
 
-bool Synchronizer::timePSS(struct lte_time *t)
+template <typename T>
+bool Synchronizer<T>::timePSS(struct lte_time *t)
 {
     if (t->subframe == 0 || t->subframe == 5) return true;
     else return false;
 }
 
-bool Synchronizer::timeSSS(struct lte_time *t)
+template <typename T>
+bool Synchronizer<T>::timeSSS(struct lte_time *t)
 {
     return timePSS(t);
 }
 
-bool Synchronizer::timePBCH(struct lte_time *t)
+template <typename T>
+bool Synchronizer<T>::timePBCH(struct lte_time *t)
 {
     return !t->subframe ? true : false;
 }
 
-bool Synchronizer::timePDSCH(struct lte_time *t)
+template <typename T>
+bool Synchronizer<T>::timePDSCH(struct lte_time *t)
 {
     return true;
 }
 
-void Synchronizer::setFreq(double freq)
+template <typename T>
+void Synchronizer<T>::setFreq(double freq)
 {
     _freq = freq;
-    IOInterface<complex<short>>::setFreq(freq);
+    IOInterface<T>::setFreq(freq);
 }
 
-void Synchronizer::setGain(double gain)
+template <typename T>
+void Synchronizer<T>::setGain(double gain)
 {
-    _gain = IOInterface<complex<short>>::setGain(gain);
+    _gain = IOInterface<T>::setGain(gain);
 }
 
 /*
  * Stage 1 PSS synchronizer
  */
-Synchronizer::StatePSS Synchronizer::syncPSS1()
+template <typename T>
+SyncStatePSS Synchronizer<T>::syncPSS1()
 {
     int target = LTE_N0_SLOT_LEN - LTE_N0_CP0_LEN - 1;
 
     _converter.convertPSS();
-    struct cxvec *bufs[_chans];
+    struct cxvec *bufs[IOInterface<T>::_chans];
     SignalVector::translateVectors(_converter.pss(), bufs);
 
-    lte_pss_search(_rx, bufs, _chans, &_sync);
+    lte_pss_search(_rx, bufs, IOInterface<T>::_chans, &_sync);
     if (_sync.mag > 900) {
         if (_sync.coarse < target)
             _sync.coarse += LTE_N0_SLOT_LEN * 10;
@@ -179,15 +192,16 @@ Synchronizer::StatePSS Synchronizer::syncPSS1()
         _rx->time.subframe = 0;
         _rx->sync.n_id_2 = _sync.n_id_2;
 
-        return StatePSS::Found;
+        return SyncStatePSS::Found;
     }
-    return StatePSS::NotFound;
+    return SyncStatePSS::NotFound;
 }
 
 /*
  * Stage 2 PSS synchronizer
  */
-Synchronizer::StatePSS Synchronizer::syncPSS2()
+template <typename T>
+SyncStatePSS Synchronizer<T>::syncPSS2()
 {
     int target = LTE_N0_SLOT_LEN - LTE_N0_CP0_LEN - 1;
     int min = target - 4;
@@ -195,16 +209,16 @@ Synchronizer::StatePSS Synchronizer::syncPSS2()
     int confidence = 2;
 
     _converter.convertPSS();
-    struct cxvec *bufs[_chans];
+    struct cxvec *bufs[IOInterface<T>::_chans];
     SignalVector::translateVectors(_converter.pss(), bufs);
 
-    int rc = lte_pss_detect(_rx, bufs, _chans);
+    int rc = lte_pss_detect(_rx, bufs, IOInterface<T>::_chans);
     if (rc != _rx->sync.n_id_2) {
         confidence--;
         LOG_PSS("Frequency domain detection failed");
     }
 
-    lte_pss_sync(_rx, bufs, _chans, &_sync, _rx->sync.n_id_2);
+    lte_pss_sync(_rx, bufs, IOInterface<T>::_chans, &_sync, _rx->sync.n_id_2);
 
     if ((_sync.coarse > min) && (_sync.coarse < max)) {
         _rx->sync.coarse = _sync.coarse - target;
@@ -214,35 +228,36 @@ Synchronizer::StatePSS Synchronizer::syncPSS2()
         LOG_PSS("Time domain detection failed");
     }
 
-    return confidence > 0 ? StatePSS::Found : StatePSS::NotFound;
+    return confidence > 0 ? SyncStatePSS::Found : SyncStatePSS::NotFound;
 }
 
 /*
  * Stage 3 PSS synchronizer
  */
-Synchronizer::StatePSS Synchronizer::syncPSS3()
+template <typename T>
+SyncStatePSS Synchronizer<T>::syncPSS3()
 {
     /* Why is this different from the PDSCH case? */
     int target = LTE_N0_SLOT_LEN - LTE_N0_CP0_LEN - 1;
     int min = target - 4;
     int max = target + 4;
     int n_id_2;
-    auto state = StatePSS::NotFound;
+    auto state = SyncStatePSS::NotFound;
 
     _converter.convertPSS();
-    struct cxvec *bufs[_chans];
+    struct cxvec *bufs[IOInterface<T>::_chans];
     SignalVector::translateVectors(_converter.pss(), bufs);
 
-    lte_pss_sync(_rx, bufs, _chans, &_sync, _rx->sync.n_id_2);
+    lte_pss_sync(_rx, bufs, IOInterface<T>::_chans, &_sync, _rx->sync.n_id_2);
     logPSS(_sync.mag, _sync.coarse);
 
-    n_id_2 = lte_pss_detect(_rx, bufs, _chans);
+    n_id_2 = lte_pss_detect(_rx, bufs, IOInterface<T>::_chans);
     if ((_sync.coarse > min) && (_sync.coarse < max)) {
-        if (n_id_2 == _rx->sync.n_id_2) state = StatePSS::Found;
+        if (n_id_2 == _rx->sync.n_id_2) state = SyncStatePSS::Found;
         else _pssMisses += 10;
     }
 
-    if (state == StatePSS::NotFound) {
+    if (state == SyncStatePSS::NotFound) {
         LOG_PSS("PSS detection failed");
         _pssMisses++;
     } else {
@@ -255,76 +270,79 @@ Synchronizer::StatePSS Synchronizer::syncPSS3()
 /*
  * Stage 4 PSS synchronizer
  */
-Synchronizer::StatePSS Synchronizer::syncPSS4()
+template <typename T>
+SyncStatePSS Synchronizer<T>::syncPSS4()
 {
     int target = LTE_N0_SLOT_LEN - LTE_N0_CP0_LEN - 1;
     int min = target - 4;
     int max = target + 4;
 
     _converter.convertPSS();
-    struct cxvec *bufs[_chans];
+    struct cxvec *bufs[IOInterface<T>::_chans];
     SignalVector::translateVectors(_converter.pss(), bufs);
 
-    lte_pss_fine_sync(_rx, bufs, _chans, &_sync, _rx->sync.n_id_2);
+    lte_pss_fine_sync(_rx, bufs, IOInterface<T>::_chans, &_sync, _rx->sync.n_id_2);
 
     if ((_sync.coarse <= min) || (_sync.coarse >= max)) {
         _pssMisses++;
-        return StatePSS::NotFound;
+        return SyncStatePSS::NotFound;
     }
 
     _rx->sync.coarse = _sync.coarse - target;
     _rx->sync.fine = _sync.fine - 32;
 
-    if (lte_pss_detect3(_rx, bufs, _chans) < 0) {
+    if (lte_pss_detect3(_rx, bufs, IOInterface<T>::_chans) < 0) {
         _pssMisses++;
-        return StatePSS::NotFound;
+        return SyncStatePSS::NotFound;
     }
 
-    return StatePSS::Found;
+    return SyncStatePSS::Found;
 }
 
 /*
  * SSS synchronizer
  */
-Synchronizer::StateSSS Synchronizer::syncSSS()
+template <typename T>
+SyncStateSSS Synchronizer<T>::syncSSS()
 {
     int target = LTE_N0_SLOT_LEN - LTE_N0_CP0_LEN - 1;
     int min = target - 4;
     int max = target + 4;
 
     _converter.convertPSS();
-    struct cxvec *bufs[_chans];
+    struct cxvec *bufs[IOInterface<T>::_chans];
     SignalVector::translateVectors(_converter.pss(), bufs);
 
-    lte_pss_sync(_rx, bufs, _chans, &_sync, _rx->sync.n_id_2);
+    lte_pss_sync(_rx, bufs, IOInterface<T>::_chans, &_sync, _rx->sync.n_id_2);
 
     if (_sync.coarse > min && _sync.coarse < max)
         _rx->sync.coarse = _sync.coarse - target;
     else
         _pssMisses++;
 
-    if (lte_pss_detect(_rx, bufs, _chans) != _rx->sync.n_id_2) {
+    if (lte_pss_detect(_rx, bufs, IOInterface<T>::_chans) != _rx->sync.n_id_2) {
         LOG_PSS("Frequency domain detection failed");
         _pssMisses++;
     }
 
-    int rc = lte_sss_detect(_rx, _rx->sync.n_id_2, bufs, _chans, &_sync);
+    int rc = lte_sss_detect(_rx, _rx->sync.n_id_2, bufs, IOInterface<T>::_chans, &_sync);
     if (rc > 0)
-        return StateSSS::Found;
+        return SyncStateSSS::Found;
     else if (rc == 0)
-        return StateSSS::Searching;
+        return SyncStateSSS::Searching;
 
     LOG_SSS("No matching sequence found");
     _sssMisses++;
-    return StateSSS::NotFound;
+    return SyncStateSSS::NotFound;
 }
 
 /*
  * PBCH MIB Decoder
  */
-bool Synchronizer::decodePBCH(struct lte_time *time, struct lte_mib *mib)
+template <typename T>
+bool Synchronizer<T>::decodePBCH(struct lte_time *time, struct lte_mib *mib)
 {
-    struct lte_subframe *lsub[_chans];
+    struct lte_subframe *lsub[IOInterface<T>::_chans];
 
     int i = 0;
     for (auto &l : lsub) {
@@ -333,7 +351,7 @@ bool Synchronizer::decodePBCH(struct lte_time *time, struct lte_mib *mib)
         _converter.convertPBCH(i++, s);
     }
 
-    int rc = lte_decode_pbch(mib, lsub, _chans);
+    int rc = lte_decode_pbch(mib, lsub, IOInterface<T>::_chans);
     if (rc < 0) {
         LOG_PBCH_ERR("Internal error");
     } else if (rc == 0) {
@@ -350,11 +368,12 @@ bool Synchronizer::decodePBCH(struct lte_time *time, struct lte_mib *mib)
 /*
  * Base drive sequence includes PSS synchronization stages 1-3
  */
-void Synchronizer::drive(struct lte_time *time)
+template <typename T>
+void Synchronizer<T>::drive(struct lte_time *time)
 {
     switch (_rx->state) {
     case LTE_STATE_PSS_SYNC:
-        if (syncPSS1() == StatePSS::Found) {
+        if (syncPSS1() == SyncStatePSS::Found) {
             lte_log_time(time);
             logPSS(_sync.mag, _sync.coarse);
             changeState(LTE_STATE_PSS_SYNC2);
@@ -365,7 +384,7 @@ void Synchronizer::drive(struct lte_time *time)
     case LTE_STATE_PSS_SYNC2:
         if (!time->subframe) {
             lte_log_time(time);
-            if (syncPSS2() == StatePSS::Found)
+            if (syncPSS2() == SyncStatePSS::Found)
                 changeState(LTE_STATE_SSS_SYNC);
             else
                 changeState(LTE_STATE_PSS_SYNC);
@@ -373,8 +392,8 @@ void Synchronizer::drive(struct lte_time *time)
         break;
     case LTE_STATE_SSS_SYNC:
         if (!time->subframe) {
-            if (syncSSS() == StateSSS::Found) {
-                 shiftFreq(_sync.f_offset);
+            if (syncSSS() == SyncStateSSS::Found) {
+                 IOInterface<T>::shiftFreq(_sync.f_offset);
                  time->subframe = _sync.dn;
 
                  _rx->sync.n_id_1 = _sync.n_id_1;
@@ -392,7 +411,7 @@ void Synchronizer::drive(struct lte_time *time)
         break;
     case LTE_STATE_PBCH_SYNC:
         if (!time->subframe) {
-            if (syncPSS3() == StatePSS::Found) {
+            if (syncPSS3() == SyncStatePSS::Found) {
                 lte_log_time(time);
                 changeState(LTE_STATE_PBCH);
             } else if (_pssMisses > 20) {
@@ -403,29 +422,33 @@ void Synchronizer::drive(struct lte_time *time)
     }
 }
 
-void Synchronizer::resetState(ResetFreq r)
+template <typename T>
+void Synchronizer<T>::resetState(SyncResetFreq r)
 {
     _pssMisses = 0;
     _sssMisses = 0;
     _reset = false;
 
-    if (r == ResetFreq::True) resetFreq();
+    if (r == SyncResetFreq::True) IOInterface<T>::resetFreq();
     changeState(LTE_STATE_PSS_SYNC);
 }
 
-void Synchronizer::reset()
+template <typename T>
+void Synchronizer<T>::reset()
 {
     _reset = true;
 }
 
-void Synchronizer::stop()
+template <typename T>
+void Synchronizer<T>::stop()
 {
     _stop = true;
     sleep(1);
-    IOInterface<complex<short>>::stop();
+    IOInterface<T>::stop();
 }
 
-void Synchronizer::changeState(lte_state newState)
+template <typename T>
+void Synchronizer<T>::changeState(lte_state newState)
 {
     auto current = _rx->state;
     char sbuf[80];
@@ -437,7 +460,8 @@ void Synchronizer::changeState(lte_state newState)
     _rx->state = newState;
 }
 
-void Synchronizer::generateReferences()
+template <typename T>
+void Synchronizer<T>::generateReferences()
 {
     for (auto &p : _pbchRefMaps) {
         lte_free_ref_map(p[0]);
@@ -457,7 +481,8 @@ void Synchronizer::generateReferences()
     _pbchRefMaps[1][3] = lte_gen_ref_map(_cellId, 1, 1, 4, 6);
 }
 
-void Synchronizer::setCellId(int cellId)
+template <typename T>
+void Synchronizer<T>::setCellId(int cellId)
 {
     ostringstream ostr;
     ostr << "STATE : Setting cellular ID " << cellId;
@@ -466,3 +491,6 @@ void Synchronizer::setCellId(int cellId)
     _cellId = cellId;
     generateReferences();
 }
+
+template class Synchronizer<complex<short>>;
+template class Synchronizer<complex<float>>;

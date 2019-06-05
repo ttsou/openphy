@@ -34,9 +34,10 @@ using namespace std;
 /*
  * PBCH drive sequence
  */
-void SynchronizerPBCH::drive()
+template <typename T>
+void SynchronizerPBCH<T>::drive()
 {
-    struct lte_time *ltime = &_rx->time;
+    struct lte_time *ltime = &Synchronizer<T>::_rx->time;
     struct lte_mib mib;
     bool mibValid = false;
 
@@ -44,7 +45,7 @@ void SynchronizerPBCH::drive()
     if (!ltime->subframe)
         ltime->frame = (ltime->frame + 1) % 1024;
 
-    Synchronizer::drive(ltime);
+    Synchronizer<T>::drive(ltime);
 
     auto logFreq = [](auto freq) {
         ostringstream ost;
@@ -52,55 +53,63 @@ void SynchronizerPBCH::drive()
         LOG_CTRL(ost.str().c_str());
     };
 
-    switch (_rx->state) {
+    switch (Synchronizer<T>::_rx->state) {
     case LTE_STATE_PBCH:
-        if (timePBCH(ltime)) {
-            if (decodePBCH(ltime, &mib)) {
-               _sssMisses = 0;
-               _pssMisses = 0;
-               _mibDecodeRB = mib.rbs;
-               _mibValid = true;
-               logFreq(getFreq());
-            } else if (++_pssMisses > 20) {
-                _reset = true;
+        if (Synchronizer<T>::timePBCH(ltime)) {
+            if (Synchronizer<T>::decodePBCH(ltime, &mib)) {
+                Synchronizer<T>::_sssMisses = 0;
+                Synchronizer<T>::_pssMisses = 0;
+                _mibDecodeRB = mib.rbs;
+                _mibValid = true;
+                logFreq(IOInterface<T>::getFreq());
+            } else if (++Synchronizer<T>::_pssMisses > 20) {
+                Synchronizer<T>::_reset = true;
             }
         }
-        changeState(LTE_STATE_PBCH_SYNC);
+        Synchronizer<T>::changeState(LTE_STATE_PBCH_SYNC);
     }
 
-    _converter.update();
+    Synchronizer<T>::_converter.update();
 }
 
 /*
  * PBCH synchronizer loop 
  */
-void SynchronizerPBCH::start()
+template <typename T>
+void SynchronizerPBCH<T>::start()
 {
-    _stop = false;
-    IOInterface<complex<short>>::start();
+    Synchronizer<T>::_stop = false;
+    IOInterface<T>::start();
 
     for (int counter = 0;; counter++) {
-        getBuffer(_converter.raw(), counter, _rx->sync.coarse, _rx->sync.fine, 0);
-        _rx->sync.coarse = 0;
-        _rx->sync.fine = 0;
+        IOInterface<T>::getBuffer(Synchronizer<T>::_converter.raw(), counter,
+                                  Synchronizer<T>::_rx->sync.coarse,
+                                  Synchronizer<T>::_rx->sync.fine, 0);
+        Synchronizer<T>::_rx->sync.coarse = 0;
+        Synchronizer<T>::_rx->sync.fine = 0;
 
         if (!_mibValid)
             drive();
 
-        _converter.reset();
+        Synchronizer<T>::_converter.reset();
 
-        if (_reset) resetState(ResetFreq::False);
-        if (_stop) break;
+        if (Synchronizer<T>::_reset) Synchronizer<T>::resetState(SyncResetFreq::False);
+        if (Synchronizer<T>::_stop) break;
    }
 }
 
-void SynchronizerPBCH::reset()
+template <typename T>
+void SynchronizerPBCH<T>::reset()
 {
     _mibValid = false;
-    Synchronizer::reset();
+    Synchronizer<T>::reset();
 }
 
-SynchronizerPBCH::SynchronizerPBCH(size_t chans)
-  : Synchronizer(chans), _mibValid(false), _mibDecodeRB(0)
+template <typename T>
+SynchronizerPBCH<T>::SynchronizerPBCH(size_t chans)
+  : Synchronizer<T>(chans), _mibValid(false), _mibDecodeRB(0)
 {
 }
+
+template class SynchronizerPBCH<complex<short>>;
+template class SynchronizerPBCH<complex<float>>;

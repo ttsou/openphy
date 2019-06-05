@@ -22,6 +22,7 @@
 #include <string>
 #include <iomanip>
 #include <map>
+#include <complex>
 #include <math.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -45,8 +46,14 @@ extern "C" {
  */
 #define NUM_RECV_SUBFRAMES        128
 
+enum SampleType {
+    COMPLEX_FLOAT,
+    COMPLEX_SHORT,
+};
+
 struct Config {
     std::string args = "";
+    SampleType sampType = COMPLEX_FLOAT; 
     double freq      = 1e9;
     double gain      = 50;
     unsigned chans   = 1;
@@ -61,7 +68,7 @@ static void print_help()
 {
     fprintf(stdout, "\nOptions:\n"
         "  -h  --help     This text\n"
-        "  -a  --args     UHD device args\n"
+        "  -a  --args     UHD Device args\n"
         "  -c  --chans    Number of receive channels (1 or 2)\n"
         "  -f  --freq     Downlink frequency\n"
         "  -g  --gain     RF receive gain\n"
@@ -69,7 +76,8 @@ static void print_help()
         "  -j  --threads  Number of PDSCH decoding threads (default = 1)\n"
         "  -b  --rb       Number of LTE resource blocks (default = auto)\n"
         "  -n  --rnti     LTE RNTI (default = 0xFFFF)\n"
-        "  -p  --port     Wireshark port\n\n",
+        "  -p  --port     Wireshark port\n"
+        "  -s  --samp     Sample format('short', 'float')\n\n",
         "'internal', 'external', 'gps'"
     );
 }
@@ -80,6 +88,11 @@ static void print_config(Config *config)
         { UHDDevice<>::REF_INTERNAL, "Internal" },
         { UHDDevice<>::REF_EXTERNAL, "External" },
         { UHDDevice<>::REF_GPS,      "GPS"      },
+    };
+
+    const std::map<SampleType, std::string> sampMap = {
+        { COMPLEX_FLOAT, "float" },
+        { COMPLEX_SHORT, "short" },
     };
 
     auto rntiString = [](uint16_t rnti) {
@@ -99,6 +112,7 @@ static void print_config(Config *config)
     fprintf(stdout,
         "Config:\n"
         "    Device args.............. \"%s\"\n"
+        "    Sample type ............. \"%s\"\n"
         "    Downlink frequency....... %.6f GHz\n"
         "    Receive gain............. %.1f dB\n"
         "    Receive antennas......... %u\n"
@@ -108,6 +122,7 @@ static void print_config(Config *config)
         "    LTE RNTI................. %s\n"
         "\n",
         config->args.c_str(),
+        sampMap.at(config->sampType).c_str(),
         config->freq / 1e9,
         config->gain,
         config->chans,
@@ -125,6 +140,11 @@ static bool handle_options(int argc, char **argv, Config &config)
       { "external", UHDDevice<>::REF_EXTERNAL },
       { "gpsdo",    UHDDevice<>::REF_GPS      },
       { "gps",      UHDDevice<>::REF_GPS      },
+    };
+
+    const std::map<std::string, SampleType> sampMap = {
+      { "float", COMPLEX_FLOAT },
+      { "short", COMPLEX_SHORT },
     };
 
     auto setParam = [](const auto &m, auto arg, auto &val) {
@@ -147,11 +167,12 @@ static bool handle_options(int argc, char **argv, Config &config)
         { "rb",      1, nullptr, 'b' },
         { "rnti",    1, nullptr, 'n' },
         { "ref" ,    1, nullptr, 'r' },
-        { "port" ,   1, nullptr, 'p' },
+        { "port",    1, nullptr, 'p' },
+        { "samp",    1, nullptr, 's' },
     };
 
     int option;
-    while ((option = getopt_long(argc, argv, "ha:c:f:g:j:b:n:r:", longopts, nullptr)) != -1) {
+    while ((option = getopt_long(argc, argv, "ha:c:f:g:j:b:n:r:p:s:", longopts, nullptr)) != -1) {
         switch (option) {
         case 'a':
             config.args = optarg;
@@ -183,6 +204,9 @@ static bool handle_options(int argc, char **argv, Config &config)
             break;
         case 'p':
             config.port = atoi(optarg);
+            break;
+        case 's':
+            if (!setParam(sampMap, optarg, config.sampType)) return false;
             break;
         case 'h':
         default:
@@ -219,10 +243,55 @@ static bool handle_options(int argc, char **argv, Config &config)
     return true;
 }
 
+template <typename T>
+class LTEDecoder {
+private:
+    Config config;
+
+public:
+    LTEDecoder(Config &config) : config(config) { }
+    void start() {
+        std::vector<std::thread> threads;
+        auto pdschQueue = std::make_shared<BufferQueue>();
+        auto pdschReturnQueue = std::make_shared<BufferQueue>();
+        auto asn1 = std::make_shared<DecoderASN1>();
+
+        /* Prime the queue */
+        for (int i = 0; i < NUM_RECV_SUBFRAMES; i++)
+            pdschReturnQueue->write(std::make_shared<LteBuffer>(config.chans));
+ 
+        asn1->open(config.port);
+        std::vector<DecoderPDSCH> decoders(config.threads,
+                                           DecoderPDSCH(config.chans));
+        for (auto &d : decoders) {
+            d.addRNTI(config.rnti);
+            d.attachInboundQueue(pdschQueue);
+            d.attachOutboundQueue(pdschReturnQueue);
+            d.attachDecoderASN1(asn1);
+            threads.push_back(std::thread(&DecoderPDSCH::start, &d));
+        }
+
+        SynchronizerPDSCH<T> sync(config.chans);
+        sync.attachInboundQueue(pdschReturnQueue);
+        sync.attachOutboundQueue(pdschQueue);
+
+        if (!sync.open(config.rbs, config.ref, config.args)) {
+            fprintf(stderr, "Radio: Failed to initialize\n");
+            return;
+        }
+        sync.setFreq(config.freq);
+        sync.setGain(config.gain);
+        sync.start();
+
+        for (auto &t : threads)
+            t.join();
+    }
+};
+        
+
 int main(int argc, char **argv)
 {
     Config config;
-    std::vector<std::thread> threads;
 
     if (!handle_options(argc, argv, config)) {
         print_help();
@@ -230,40 +299,13 @@ int main(int argc, char **argv)
     }
 
     print_config(&config);
-
-    auto pdschQueue = std::make_shared<BufferQueue>();
-    auto pdschReturnQueue = std::make_shared<BufferQueue>();
-    auto asn1 = std::make_shared<DecoderASN1>();
-    SynchronizerPDSCH sync(config.chans);
-
-    sync.attachInboundQueue(pdschReturnQueue);
-    sync.attachOutboundQueue(pdschQueue);
-
-    /* Prime the queue */
-    for (int i = 0; i < NUM_RECV_SUBFRAMES; i++)
-        pdschReturnQueue->write(std::make_shared<LteBuffer>(config.chans));
-
-    asn1->open(config.port);
-    std::vector<DecoderPDSCH> decoders(config.threads,
-                                       DecoderPDSCH(config.chans));
-    for (auto &d : decoders) {
-        d.addRNTI(config.rnti);
-        d.attachInboundQueue(pdschQueue);
-        d.attachOutboundQueue(pdschReturnQueue);
-        d.attachDecoderASN1(asn1);
-        threads.push_back(std::thread(&DecoderPDSCH::start, &d));
+    if (config.sampType == COMPLEX_FLOAT) {
+        LTEDecoder<std::complex<float>> decoder(config);
+        decoder.start();
+    } else {
+        LTEDecoder<std::complex<short>> decoder(config);
+        decoder.start();
     }
-
-    if (!sync.open(config.rbs, config.ref, config.args)) {
-        fprintf(stderr, "Radio: Failed to initialize\n");
-        return -1;
-    }
-    sync.setFreq(config.freq);
-    sync.setGain(config.gain);
-    sync.start();
-
-    for (auto &t : threads)
-        t.join();
 
     return 0;
 }

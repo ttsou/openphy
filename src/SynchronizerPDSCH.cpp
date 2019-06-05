@@ -31,7 +31,8 @@ extern "C" {
 
 using namespace std;
 
-void SynchronizerPDSCH::handleFreqOffset(double offset)
+template <typename T>
+void SynchronizerPDSCH<T>::handleFreqOffset(double offset)
 {
     _freqOffsets.push(offset);
 
@@ -44,55 +45,57 @@ void SynchronizerPDSCH::handleFreqOffset(double offset)
     if (_freqOffsets.full()) {
         auto average = _freqOffsets.average();
         log(average);
-        shiftFreq(average);
+        IOInterface<T>::shiftFreq(average);
     }
 }
 
 /*
  * PDSCH drive sequence
  */
-void SynchronizerPDSCH::drive(int adjust)
+template <typename T>
+void SynchronizerPDSCH<T>::drive(int adjust)
 {
-    struct lte_time *time = &_rx->time;
+    struct lte_time *time = &Synchronizer<T>::_rx->time;
     static struct lte_mib mib;
 
     time->subframe = (time->subframe + 1) % 10;
     if (!time->subframe)
         time->frame = (time->frame + 1) % 1024;
 
-    Synchronizer::drive(time);
+    Synchronizer<T>::drive(time);
 
-    switch (_rx->state) {
+    switch (Synchronizer<T>::_rx->state) {
     case LTE_STATE_PBCH:
-        if (timePBCH(time)) {
-            if (decodePBCH(time, &mib)) {
+        if (Synchronizer<T>::timePBCH(time)) {
+            if (Synchronizer<T>::decodePBCH(time, &mib)) {
                 lte_log_time(time);
-                if (mib.rbs != _rbs) {
-                    _rbs = mib.rbs;
-                    reopen(_rbs);
-                    changeState(LTE_STATE_PSS_SYNC);
+                if (mib.rbs != IOInterface<T>::_rbs) {
+                    IOInterface<T>::_rbs = mib.rbs;
+                    IOInterface<T>::open(IOInterface<T>::_rbs);
+                    Synchronizer<T>::changeState(LTE_STATE_PSS_SYNC);
                 } else {
-                    changeState(LTE_STATE_PDSCH_SYNC);
-                    _pssMisses = 0;
+                    Synchronizer<T>::changeState(LTE_STATE_PDSCH_SYNC);
+                    Synchronizer<T>::_pssMisses = 0;
                 }
-                _pssMisses = 0;
-            } else if (++_pssMisses > 10) {
-                resetState();
+                Synchronizer<T>::_pssMisses = 0;
+            } else if (++Synchronizer<T>::_pssMisses > 10) {
+                Synchronizer<T>::resetState();
             } else {
-                changeState(LTE_STATE_PBCH_SYNC);
+                Synchronizer<T>::changeState(LTE_STATE_PBCH_SYNC);
             }
         }
         break;
     case LTE_STATE_PDSCH_SYNC:
         /* SSS must match so we only check timing/frequency on 0 */
         if (time->subframe == 5) {
-            if (syncPSS4() == StatePSS::NotFound && _pssMisses > 100) {
-                resetState();
+            if (Synchronizer<T>::syncPSS4() == SyncStatePSS::NotFound &&
+                Synchronizer<T>::_pssMisses > 100) {
+                Synchronizer<T>::resetState();
                 break;
             }
         }
     case LTE_STATE_PDSCH:
-        if (timePDSCH(time)) {
+        if (Synchronizer<T>::timePDSCH(time)) {
             auto lbuf = _inboundQueue->readNoBlock();
             if (!lbuf) {
                 LOG_ERR("SYNC  : Dropped frame");
@@ -102,61 +105,68 @@ void SynchronizerPDSCH::drive(int adjust)
             handleFreqOffset(lbuf->freqOffset);
 
             if (lbuf->crcValid) {
-                _pssMisses = 0;
-                _sssMisses = 0;
+                Synchronizer<T>::_pssMisses = 0;
+                Synchronizer<T>::_sssMisses = 0;
                 lbuf->crcValid = false;
             }
 
             lbuf->rbs = mib.rbs;
-            lbuf->cellId = _cellId;
+            lbuf->cellId = Synchronizer<T>::_cellId;
             lbuf->ng = mib.phich_ng;
             lbuf->txAntennas = mib.ant;
             lbuf->sfn = time->subframe;
             lbuf->fn = time->frame;
 
-            _converter.delayPDSCH(lbuf->buffers, adjust);
+            Synchronizer<T>::_converter.delayPDSCH(lbuf->buffers, adjust);
             _outboundQueue->write(lbuf);
         }
     }
 
-    _converter.update();
+    Synchronizer<T>::_converter.update();
 }
 
 /*
  * PDSCH synchronizer loop 
  */
-void SynchronizerPDSCH::start()
+template <typename T>
+void SynchronizerPDSCH<T>::start()
 {
-    _stop = false;
-    IOInterface<complex<short>>::start();
+    Synchronizer<T>::_stop = false;
+    IOInterface<T>::start();
 
     for (int counter = 0;; counter++) {
-        int shift = getBuffer(_converter.raw(), counter,
-                              _rx->sync.coarse,
-                              _rx->sync.fine,
-                              _rx->state == LTE_STATE_PDSCH_SYNC);
-        _rx->sync.coarse = 0;
-        _rx->sync.fine = 0;
+        int shift = IOInterface<T>::getBuffer(Synchronizer<T>::_converter.raw(), counter,
+                                              Synchronizer<T>::_rx->sync.coarse,
+                                              Synchronizer<T>::_rx->sync.fine,
+                                              Synchronizer<T>::_rx->state == LTE_STATE_PDSCH_SYNC);
+        Synchronizer<T>::_rx->sync.coarse = 0;
+        Synchronizer<T>::_rx->sync.fine = 0;
 
         drive(shift);
-        _converter.reset();
+        Synchronizer<T>::_converter.reset();
 
-        if (_reset) resetState();
-        if (_stop) break;
+        if (Synchronizer<T>::_reset) Synchronizer<T>::resetState();
+        if (Synchronizer<T>::_stop) break;
     }
 }
 
-void SynchronizerPDSCH::attachInboundQueue(shared_ptr<BufferQueue> q)
+template <typename T>
+void SynchronizerPDSCH<T>::attachInboundQueue(shared_ptr<BufferQueue> q)
 {
     _inboundQueue = q;
 }
 
-void SynchronizerPDSCH::attachOutboundQueue(shared_ptr<BufferQueue> q)
+template <typename T>
+void SynchronizerPDSCH<T>::attachOutboundQueue(shared_ptr<BufferQueue> q)
 {
     _outboundQueue = q;
 }
 
-SynchronizerPDSCH::SynchronizerPDSCH(size_t chans)
-  : Synchronizer(chans), _freqOffsets(200)
+template <typename T>
+SynchronizerPDSCH<T>::SynchronizerPDSCH(size_t chans)
+  : Synchronizer<T>::Synchronizer(chans), _freqOffsets(200)
 {
 }
+
+template class SynchronizerPDSCH<complex<short>>;
+template class SynchronizerPDSCH<complex<float>>;
