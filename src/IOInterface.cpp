@@ -28,6 +28,7 @@
 #include <stdexcept>
 
 #include "IOInterface.h"
+#include "UHDDevice.h"
 
 extern "C" {
 #include "lte/log.h"
@@ -131,8 +132,8 @@ template <typename T>
 bool IOInterface<T>::open(unsigned rbs, int ref, const std::string &args)
 {
     try {
-        _usrp = make_shared<UHDDevice<T>>(_chans);
-        _usrp->init(_ts0, rbs, ref, args);
+        _device = make_shared<UHDDevice<T>>(_chans);
+        _device->init(_ts0, rbs, ref, args);
     } catch (exception& e) {
         return false;
     }
@@ -209,13 +210,13 @@ int IOInterface<T>::comp_timing_offset(int coarse, int fine, int state)
 template <typename T>
 void IOInterface<T>::start()
 {
-    _usrp->start();
+    _device->start();
 }
 
 template <typename T>
 void IOInterface<T>::stop()
 {
-    if (_usrp != nullptr) _usrp->stop();
+    if (_device != nullptr) _device->stop();
 }
 
 template <typename T>
@@ -232,10 +233,10 @@ int IOInterface<T>::getBuffer(vector<vector<T>> &bufs,
 
     int64_t ts = _ts0 + frameNum * _frameSize;
 
-    while (ts + _frameSize > _usrp->get_ts_high())
-        _usrp->reload();
+    while (ts + _frameSize > _device->get_ts_high())
+        _device->reload();
 
-    if (_usrp->pull(bufs, _frameSize, ts) < 0) {
+    if (_device->pull(bufs, _frameSize, ts) < 0) {
         LOG_DEV_ERR("DEV   : Subframe I/O error");
         throw runtime_error("");
     }
@@ -249,13 +250,13 @@ template <typename T>
 void IOInterface<T>::setFreq(double freq)
 {
     _freq = freq;
-    _usrp->setFreq(freq);
+    _device->setFreq(freq);
 }
 
 template <typename T>
 double IOInterface<T>::setGain(double gain)
 {
-    _gain = _usrp->setGain(gain);
+    _gain = _device->setGain(gain);
     return _gain;
 }
 
@@ -274,19 +275,19 @@ double IOInterface<T>::getGain()
 template <typename T>
 void IOInterface<T>::shiftFreq(double freq)
 {
-    _usrp->shiftFreq(freq);
+    _device->shiftFreq(freq);
 }
 
 template <typename T>
 void IOInterface<T>::resetFreq()
 {
-    _usrp->resetFreq();
+    _device->resetFreq();
 }
 
 template <typename T>
 void IOInterface<T>::reset()
 {
-    _usrp->reset();
+    _device->reset();
 
     _ts0 = 0;
     _prevFrameNum = 0;

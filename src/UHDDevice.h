@@ -6,10 +6,10 @@
 #include <string>
 #include <uhd/usrp/multi_usrp.hpp>
 
-#include "TimestampBuffer.h"
+#include "Device.h"
 
 template <typename T = std::complex<short>>
-class UHDDevice {
+class UHDDevice : public Device<T> {
     typedef TimestampBuffer<T> TSBuffer;
 
 public:

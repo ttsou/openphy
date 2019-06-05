@@ -46,4 +46,5 @@ noinst_HEADERS = \
 	SynchronizerPBCH.h \
 	SynchronizerPDSCH.h \
 	TimestampBuffer.h \
+	Device.h \
 	UHDDevice.h

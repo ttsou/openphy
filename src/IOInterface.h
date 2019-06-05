@@ -3,7 +3,8 @@
 
 #include <vector>
 #include <stddef.h>
-#include "UHDDevice.h"
+#include <memory>
+#include "Device.h"
 
 template <typename T>
 class IOInterface {
@@ -38,7 +39,7 @@ protected:
     unsigned _rbs;
 
 private:
-    std::shared_ptr<UHDDevice<T>> _usrp;
+    std::shared_ptr<Device<T>> _device;
     unsigned _prevFrameNum, _frameSize, _frameMod = 10;
     int _ref, _pssTimingAdjust;
     std::string _args;
