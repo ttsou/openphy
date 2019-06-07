@@ -99,8 +99,10 @@ void Resampler::generatePaths(size_t n)
     paths.resize(n);
 
     int i = 0;
-    for (auto &p : paths)
-        p = pair<int, int>((Q * i) / P, (Q * i++) % P);
+    for (auto &p : paths) {
+        p = pair<int, int>((Q * i) / P, (Q * i) % P);
+        i++;
+    }
 }
 
 Resampler::Resampler(unsigned P, unsigned Q, size_t filterLen)
