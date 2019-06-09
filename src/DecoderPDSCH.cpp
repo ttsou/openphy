@@ -108,11 +108,11 @@ void DecoderPDSCH::readBufferState(shared_ptr<LteBuffer> lbuf)
     /*
      * Reinitialization on cellid change
      */
-    bool idChange = lbuf->cellId     != _cellId ||
+    bool idChange = !_cellIdValid ||
+                    lbuf->cellId     != _cellId ||
                     lbuf->txAntennas != _txAntennas ||
                     lbuf->rbs        != _rbs ||
-                    lbuf->ng         != _ng ||
-                    !_cellIdValid;
+                    lbuf->ng         != _ng;
 
     if (idChange)
         setCellId(lbuf->cellId, lbuf->rbs, lbuf->ng, lbuf->txAntennas);

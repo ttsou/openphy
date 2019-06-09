@@ -221,7 +221,8 @@ size_t Converter<T>::pdschLen() const
 template <typename T>
 Converter<T>::Converter(size_t chans, size_t taps)
   : _prev(chans), _buffers(chans), _pdsch(chans), _pbch(chans),
-    _pss(chans), _pssResamplers(chans), _pbchResamplers(chans), _taps(taps)
+    _pss(chans), _pssResamplers(chans), _pbchResamplers(chans),
+    _taps(taps), _rbs(0)
 {
 }
 

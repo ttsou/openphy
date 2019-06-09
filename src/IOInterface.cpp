@@ -117,7 +117,7 @@ int (*fine_timing_offset)(int coarse, int fine) = NULL;
 
 template <typename T>
 IOInterface<T>::IOInterface(size_t chans)
-  : _chans(chans)
+  : _chans(chans), _prevFrameNum(0)
 {
 }
 

@@ -29,12 +29,12 @@ extern "C" {
 
 using namespace std;
 
-SignalVector::SignalVector() : _cv(nullptr)
+SignalVector::SignalVector() : _local(false), _cv(nullptr)
 {
 }
 
 SignalVector::SignalVector(size_t size, size_t head)
-  : _cv(nullptr)
+  : _local(false), _cv(nullptr)
 {
     if (size > 0) {
         _cv = cxvec_alloc(size, head, 0, nullptr, 0);
@@ -44,13 +44,13 @@ SignalVector::SignalVector(size_t size, size_t head)
 }
 
 SignalVector::SignalVector(const SignalVector &s)
-  : _cv(nullptr)
+  : _local(false), _cv(nullptr)
 {
     *this = s;
 }
 
 SignalVector::SignalVector(SignalVector &&s)
-  : _cv(nullptr)
+  : _local(false), _cv(nullptr)
 {
     *this = move(s);
 }
