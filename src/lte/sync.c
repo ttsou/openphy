@@ -181,7 +181,7 @@ int lte_sss_detect(struct lte_rx *rx, int n_id_2,
 	}
 
 	memcpy(sym_f[0]->data, buf_sss->data, 64 * sizeof(float complex));
-	memset(buf_sss->data, 0, 64 * sizeof(float complex));
+	cxvec_reset(buf_sss);
 	ready = 1;
 	super_cnt = 0;
 
@@ -463,6 +463,7 @@ static __attribute__((constructor)) void init()
 			   128, 1, 1, in_6rb, out_6rb, 0);
 
 	buf_sss = cxvec_alloc_simple(64);
+	cxvec_reset(buf_sss);
 
 	memset(moving_avg0, 0, AVG_NUM * sizeof(float complex));
 	memset(moving_avg1, 0, AVG_NUM * sizeof(float complex));
