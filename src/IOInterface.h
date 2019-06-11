@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <memory>
 #include "Device.h"
+#include "SignalVector.h"
 
 template <typename T>
 class IOInterface {
@@ -47,7 +48,11 @@ private:
     int _ref, _pssTimingAdjust;
     std::string _args;
     int64_t _ts0;
-    double _freq, _gain;
+    double _freq, _offset, _gain;
+
+    SignalVector _freqCorr;
+    void generateFreqOffset();
+    void applyFreqOffset(std::vector<std::vector<T>> &bufs);
 };
 
 #endif /* _IO_INTERFACE_ */

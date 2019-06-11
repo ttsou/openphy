@@ -43,7 +43,7 @@ private:
     size_t _chans;
     size_t _spp;
     double _rate;
-    double _offset_freq;
+    double _base_freq,_offset_freq;
     unsigned long long _prev_ts;
     std::ifstream _stream;
     std::vector<std::shared_ptr<TSBuffer>> _rx_bufs;

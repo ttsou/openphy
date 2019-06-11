@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <iostream>
 #include <sstream>
 #include <memory>
@@ -37,6 +38,7 @@ extern "C" {
 }
 
 #define DEV_START_OFFSET    20
+#define LTE_RATE            30.72e6
 
 using namespace std;
 
@@ -119,7 +121,8 @@ int (*fine_timing_offset)(int coarse, int fine) = NULL;
 
 template <typename T>
 IOInterface<T>::IOInterface(size_t chans)
-  : _chans(chans), _prevFrameNum(0), _ref(UHDDevice<>::REF_UNKNOWN)
+  : _chans(chans), _prevFrameNum(0), _ref(UHDDevice<>::REF_UNKNOWN),
+    _freq(0.0), _offset(0.0), _gain(0.0)
 {
 }
 
@@ -209,6 +212,11 @@ bool IOInterface<T>::open(unsigned rbs)
         return -1;
     }
 
+    if (isFile()) {
+        _freqCorr = SignalVector(lte_subframe_len(rbs));
+        generateFreqOffset();
+    }
+
     return true;
 }
 
@@ -277,7 +285,7 @@ int IOInterface<T>::getBuffer(vector<vector<T>> &bufs,
     }
 
     _prevFrameNum = frameNum;
-
+    if (isFile()) applyFreqOffset(bufs);
     return shift;
 }
 
@@ -286,6 +294,10 @@ void IOInterface<T>::setFreq(double freq)
 {
     _freq = freq;
     _device->setFreq(freq);
+    if (isFile()) {
+        _offset = 0.0;
+        generateFreqOffset();
+    }
 }
 
 template <typename T>
@@ -311,12 +323,20 @@ template <typename T>
 void IOInterface<T>::shiftFreq(double freq)
 {
     _device->shiftFreq(freq);
+    if (isFile()) {
+        _offset += freq;
+        generateFreqOffset();
+    }
 }
 
 template <typename T>
 void IOInterface<T>::resetFreq()
 {
     _device->resetFreq();
+    if (isFile()) {
+        _offset = 0.0;
+        generateFreqOffset();
+    }
 }
 
 template <typename T>
@@ -328,6 +348,28 @@ void IOInterface<T>::reset()
     _prevFrameNum = 0;
     _frameSize = 0;
 }
+
+template <typename T>
+void IOInterface<T>::generateFreqOffset()
+{
+    int n = 0;
+    for (auto &samp:_freqCorr) {
+        samp = complex<float>(sinf((float) n * _offset*2*M_PI/(LTE_RATE)),
+                              cosf((float) n * _offset*2*M_PI/(LTE_RATE)));
+        n++;
+    }
+}
+
+template <typename T>
+void IOInterface<T>::applyFreqOffset(vector<vector<T>> &bufs)
+{
+    for (auto &buf:bufs) {
+        auto it = buf.begin();
+        for (auto n:_freqCorr)
+            *it++ *= n;
+    }
+}
+
 
 template class IOInterface<complex<short>>;
 template class IOInterface<complex<float>>;
