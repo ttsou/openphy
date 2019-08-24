@@ -71,7 +71,7 @@ void SynchronizerPDSCH<T>::drive(int adjust)
                 lte_log_time(time);
                 if (mib.rbs != IOInterface<T>::_rbs) {
                     IOInterface<T>::_rbs = mib.rbs;
-                    IOInterface<T>::reopen(IOInterface<T>::_rbs);
+                    Synchronizer<T>::reopen(IOInterface<T>::_rbs);
                     Synchronizer<T>::changeState(LTE_STATE_PSS_SYNC);
                 } else {
                     Synchronizer<T>::changeState(LTE_STATE_PDSCH_SYNC);
