@@ -55,6 +55,7 @@ void FileDevice<T>::resetFreq()
     ostringstream ost;
     ost << "DEV   : Resetting offset frequency";
     LOG_DEV(ost.str().c_str());
+    _offset_freq = 0;
 }
 
 static double get_rate(int rbs)
@@ -226,6 +227,7 @@ void FileDevice<T>::reset()
 {
     stop();
     _prev_ts = 0;
+    _offset_freq = 0;
 }
 
 template <typename T>

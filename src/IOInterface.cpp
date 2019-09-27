@@ -24,6 +24,7 @@
 #include <math.h>
 #include <iostream>
 #include <sstream>
+#include <map>
 #include <memory>
 #include <complex>
 #include <stdexcept>
@@ -38,7 +39,6 @@ extern "C" {
 }
 
 #define DEV_START_OFFSET    20
-#define LTE_RATE            30.72e6
 
 using namespace std;
 
@@ -53,45 +53,14 @@ using namespace std;
  *        75          15.36 Msps        2
  *       100          23.04 Msps        1
  */
-static int get_decim(int rbs)
-{
-    switch (rbs) {
-    case 6:
-        return 16;
-    case 15:
-        return 8;
-    case 25:
-        return 4;
-    case 50:
-        return 2;
-    case 75:
-        return 2;
-    case 100:
-        return 1;
-    }
-
-    return -1;
-}
-
-static int use_fft_1536(int rbs)
-{
-    switch (rbs) {
-    case 6:
-        return 0;
-    case 15:
-        return 0;
-    case 25:
-        return 1;
-    case 50:
-        return 1;
-    case 75:
-        return 0;
-    case 100:
-        return 1;
-    }
-
-    return -1;
-}
+map<int, tuple<bool, double, int>> rb_rate_map {
+    { 6,   { false,  1.92e6, 16 } },
+    { 15,  { false,  3.84e6,  8 } },
+    { 25,  { true,   5.76e6,  4 } },
+    { 50,  { true,  11.52e6,  2 } },
+    { 75,  { false, 15.36e6,  2 } },
+    { 100, { true,  23.04e6,  1 } },
+};
 
 #define TIMING_OFFSET_FUNC(N,LIM0,LIM1) \
     static int timing_offset_rb##N(int coarse, int fine) \
@@ -174,8 +143,8 @@ bool IOInterface<T>::reopen(unsigned rbs)
 template <typename T>
 bool IOInterface<T>::open(unsigned rbs)
 {
-    int baseQ = get_decim(rbs);
-    if (use_fft_1536(rbs))
+    int baseQ = get<2>(rb_rate_map[rbs]);
+    if (get<0>(rb_rate_map[rbs]))
         _pssTimingAdjust = 32 * 3 / 4 / baseQ;
     else
         _pssTimingAdjust = 32 / baseQ;
@@ -352,10 +321,11 @@ void IOInterface<T>::reset()
 template <typename T>
 void IOInterface<T>::generateFreqOffset()
 {
-    int n = 0;
+    float n = 0;
+    double rate = get<1>(rb_rate_map[_rbs]);
     for (auto &samp:_freqCorr) {
-        samp = complex<float>(sinf((float) n * _offset*2*M_PI/(LTE_RATE)),
-                              cosf((float) n * _offset*2*M_PI/(LTE_RATE)));
+        samp = complex<float>(sinf(n * _offset*2*M_PI/rate),
+                              cosf(n * _offset*2*M_PI/rate));
         n++;
     }
 }
